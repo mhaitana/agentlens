@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@agentlens/domain": "workspace:*",
+    "@agentlens/database": "workspace:*",
     "@agentlens/shared": "workspace:*"
   },
   "license": "MIT",

@@ -1,8 +1,38 @@
 /**
  * @agentlens/analysis-engine — computes derived metrics from persisted domain
- * entities: effort/reasoning estimates, verification outcomes, productiveness
- * heuristics, file-activity reconciliation (spec §6, §13.2).
+ * entities and runs the versioned rule engine (spec §13.5, §13.6, §15.1).
  *
- * Skeleton — implementation lands in feature F002.
+ * This package depends on `@agentlens/domain` (neutral contracts) and
+ * `@agentlens/database` (schema queries). It never depends on a source
+ * adapter — it consumes only normalised, persisted rows. Dashboard, CLI and
+ * reporting consume the {@link AnalyticsSnapshot} it produces.
  */
-export const ANALYSIS_ENGINE_VERSION = "0.0.0";
+
+export const ANALYSIS_ENGINE_VERSION = "0.1.0";
+
+export { computeAnalytics, type ComputeAnalyticsOptions } from "./analytics.js";
+export {
+  computeCostSummary,
+  COST_ESTIMATE_LABEL,
+  type CostRequestRow,
+  type CostComputationResult,
+  type RequestCost,
+  type CostMethodology,
+} from "./cost.js";
+export {
+  resolvePrice,
+  estimateRequestCost,
+  buildPriceRegistry,
+  DEFAULT_PRICE_REGISTRY,
+  PRICE_REGISTRY_VERSION,
+  type ModelPrice,
+  type PriceRegistry,
+} from "./price-registry.js";
+export {
+  RuleEngine,
+  createRuleEngine,
+  mergeThresholds,
+  fingerprintCandidate,
+  type RuleOverride,
+  type RuleOverrides,
+} from "./rule-engine.js";

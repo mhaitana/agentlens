@@ -18,6 +18,7 @@ export {
   confidenceBand,
   exact,
   reported,
+  inferred,
   estimated,
   unknown,
 } from "./provenance.js";
@@ -66,3 +67,28 @@ export type {
   Remediation,
   RemediationType,
 } from "./recommendation.js";
+
+export type {
+  ReportPeriod,
+  ReportFilters,
+  ModelUsageRow,
+  ToolUsageRow,
+  RepeatedOperation,
+  UsageMetrics,
+  ToolBehaviourMetrics,
+  WorkflowMetrics,
+  CostSummary,
+  CompletenessSummary,
+  CompletionSummary,
+  ScanProvenanceSummary,
+  AnalyticsSnapshot,
+} from "./metrics.js";
+
+export type {
+  RecommendationRule,
+  RecommendationCandidate,
+  AnalysisContext,
+  RuleThresholds,
+  RuleScope,
+  RuleEngineResult,
+} from "./rule-engine.js";

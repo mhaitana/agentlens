@@ -53,6 +53,11 @@ export function reported<T>(value: T, note?: string): ProvenancedValue<T> {
   return { value, provenance: "reported", note };
 }
 
+/** Helper to tag an inferred value (derived indirectly from evidence). */
+export function inferred<T>(value: T, note?: string, confidence?: Confidence): ProvenancedValue<T> {
+  return { value, provenance: "inferred", note, confidence };
+}
+
 /** Helper to tag an estimated value concisely. */
 export function estimated<T>(
   value: T,

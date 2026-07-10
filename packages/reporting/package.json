@@ -22,7 +22,9 @@
   },
   "dependencies": {
     "@agentlens/domain": "workspace:*",
-    "@agentlens/shared": "workspace:*"
+    "@agentlens/shared": "workspace:*",
+    "cli-table3": "^0.6.5",
+    "picocolors": "^1.1.1"
   },
   "license": "MIT",
   "devDependencies": {

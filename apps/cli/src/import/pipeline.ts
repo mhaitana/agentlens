@@ -10,6 +10,7 @@ import { decideImport, type IncrementalDecision } from "./incremental.js";
 import { reconstructSession } from "./reconstruct.js";
 import { persistSession, type PersistCounts } from "./persist.js";
 import type { ImportPrivacy } from "./privacy.js";
+import { redactPath } from "@agentlens/redaction";
 
 /**
  * The import pipeline orchestrator (spec §13.3, §13.5).
@@ -31,6 +32,8 @@ export interface PipelineOptions {
   /** Restrict to a single project path. */
   project?: string;
   dryRun: boolean;
+  /** Re-import every discovered file even if unchanged (spec §16 --force). */
+  force?: boolean;
   signal?: AbortSignal;
   onProgress?: (progress: PipelineProgress) => void;
 }
@@ -119,8 +122,15 @@ async function importOne(
     };
   }
 
-  const state = await scanStateRepo.get(sourceId, uri);
-  const decision = decideImport({ state, size, mtime, headHash, parserVersion: PARSER_VERSION });
+  // Non-revealing storage key for scan_state: a path hash, not the raw path.
+  // The raw uri is used only in memory to (re-)read the file; nothing about the
+  // developer's home directory is ever persisted (§8.4 redaction-before-persist).
+  const storageKey = redactPath(uri, opts.privacy.options).pathHash;
+
+  const state = await scanStateRepo.get(sourceId, storageKey);
+  let decision = decideImport({ state, size, mtime, headHash, parserVersion: PARSER_VERSION });
+  // --force overrides the incremental decision: re-import even if unchanged.
+  if (opts.force) decision = { skip: false, delete: true, reason: "forced re-import" };
   emit(uri, "decide", {});
 
   if (decision.skip) {
@@ -175,7 +185,7 @@ async function importOne(
     // Record scan_state so the next run can skip / detect changes.
     await scanStateRepo.upsert({
       sourceId,
-      uri,
+      uri: storageKey,
       fileIdentity: headHash,
       size,
       mtime,

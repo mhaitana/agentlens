@@ -181,6 +181,9 @@ importers:
 
   packages/analysis-engine:
     dependencies:
+      "@agentlens/database":
+        specifier: workspace:*
+        version: link:../database
       "@agentlens/domain":
         specifier: workspace:*
         version: link:../domain
@@ -427,6 +430,12 @@ importers:
       "@agentlens/shared":
         specifier: workspace:*
         version: link:../shared
+      cli-table3:
+        specifier: ^0.6.5
+        version: 0.6.5
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
     devDependencies:
       "@types/node":
         specifier: ^22.10.0
