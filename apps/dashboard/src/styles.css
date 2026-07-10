@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Dark mode is driven by a `.dark` class on <html> (§18.1 dark/light themes). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Reduced-motion support (§18.5): no novelty animations, respect OS setting. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:root {
+  color-scheme: light;
+  --al-surface: #ffffff;
+  --al-surface-2: #f7f7f8;
+  --al-border: #e5e7eb;
+  --al-text: #1f2328;
+  --al-text-muted: #5b6470;
+  --al-accent: #2563eb;
+  --al-accent-weak: #dbeafe;
+}
+
+.dark {
+  color-scheme: dark;
+  --al-surface: #0f1115;
+  --al-surface-2: #171a21;
+  --al-border: #2a2f3a;
+  --al-text: #e6e8ec;
+  --al-text-muted: #9aa3b2;
+  --al-accent: #6b8afd;
+  --al-accent-weak: #1e2536;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--al-surface-2);
+  color: var(--al-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Visible focus indicators (§18.5 accessibility). */
+:focus-visible {
+  outline: 2px solid var(--al-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--al-border);
+  border-radius: 6px;
+}

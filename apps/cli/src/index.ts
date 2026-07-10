@@ -16,6 +16,7 @@ import { makePrivacyCommand } from "./commands/privacy.js";
 import { makeRulesCommand } from "./commands/rules.js";
 import { makeStatusCommand } from "./commands/status.js";
 import { makeVersionCommand } from "./commands/version.js";
+import { makeDashboardCommand } from "./commands/dashboard.js";
 
 const program = new Command();
 
@@ -31,6 +32,7 @@ program.addCommand(makeConfigCommand());
 program.addCommand(makePrivacyCommand());
 program.addCommand(makeRulesCommand());
 program.addCommand(makeStatusCommand());
+program.addCommand(makeDashboardCommand());
 program.addCommand(makeVersionCommand());
 
 program.parseAsync(process.argv).catch((err: unknown) => {

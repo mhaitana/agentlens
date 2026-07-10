@@ -44,3 +44,8 @@ pnpm-debug.log*
 # Changesets
 .changeset/*.md
 !.changeset/README.md
+
+# Playwright (browsers pinned in-repo per §26 / user constraint)
+.playwright-browsers/
+test-results/
+playwright-report/

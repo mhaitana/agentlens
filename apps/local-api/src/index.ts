@@ -1,24 +1,48 @@
 /**
  * @agentlens/local-api — Fastify server exposing the local read/write API the
- * dashboard and CLI consume, plus the hook + OTLP ingestion endpoints (spec
- * §13.1). Bound to 127.0.0.1 only; never exposed on a public interface.
+ * dashboard and CLI consume (spec §17). Bound to 127.0.0.1 only; never exposed
+ * on a public interface (§19.1).
  *
- * INFRA-001 ships a minimal health-check surface; the full route tree arrives
- * in feature F008.
+ * Public surface:
+ * - `buildServer(deps)` / `startServer(deps)` — create/run the API server.
+ * - `generateRuntimeToken()` — random token guarding mutation endpoints.
+ * - `pickFreePort(preferred)` — loopback port selection with occupied-port
+ *   handling (§13.8), used by the `agentlens dashboard` command.
  */
-import Fastify from "fastify";
+import { randomBytes } from "node:crypto";
+import { createServer } from "node:net";
 
-async function main(): Promise<void> {
-  const app = Fastify({ logger: false });
+export type { ServerDeps, ApiError } from "./deps.js";
+export { buildServer, startServer, type RunningServer } from "./server.js";
+export { ApiHttpError, badRequest, notFound, forbidden } from "./errors.js";
 
-  app.get("/health", () => ({ status: "ok" }));
-
-  const port = Number(process.env.AGENTLENS_API_PORT ?? 7474);
-  await app.listen({ port, host: "127.0.0.1" });
-  process.stdout.write(`AgentLens local API listening on 127.0.0.1:${port}\n`);
+/** Generate a random hex runtime token (§17, §19.1). */
+export function generateRuntimeToken(): string {
+  return randomBytes(32).toString("hex");
 }
 
-main().catch((err: unknown) => {
-  process.stderr.write(`ERROR: ${err instanceof Error ? err.message : String(err)}\n`);
-  process.exit(2);
-});
+/**
+ * Return the preferred port if it is free on loopback; otherwise find and
+ * return a free loopback port. Resolves with the chosen port (§13.8
+ * "handle occupied ports safely").
+ */
+export async function pickFreePort(preferred: number): Promise<number> {
+  const probe = (port: number) =>
+    new Promise<boolean>((resolve) => {
+      const s = createServer();
+      s.unref();
+      s.once("error", () => resolve(false));
+      s.listen(port, "127.0.0.1", () => s.close(() => resolve(true)));
+    });
+  if (await probe(preferred)) return preferred;
+  // Fall back to an OS-assigned free port.
+  return new Promise<number>((resolve, reject) => {
+    const s = createServer();
+    s.unref();
+    s.once("error", reject);
+    s.listen(0, "127.0.0.1", () => {
+      const addr = s.address();
+      s.close(() => resolve(typeof addr === "object" && addr ? addr.port : preferred));
+    });
+  });
+}

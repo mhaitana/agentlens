@@ -18,9 +18,31 @@ export { MIGRATIONS, type Migration } from "./migrations.js";
 
 // Re-export query helpers so app layers can build typed queries against the
 // schema without depending on drizzle-orm directly.
-export { eq, and, inArray, isNull, isNotNull, count } from "drizzle-orm";
+export {
+  eq,
+  and,
+  or,
+  inArray,
+  isNull,
+  isNotNull,
+  gte,
+  lte,
+  like,
+  asc,
+  desc,
+  count,
+  sql,
+} from "drizzle-orm";
 
 export { SessionRepo, type SessionRow } from "./repos/session.js";
 export { SourceRepo, type SourceRow } from "./repos/source.js";
 export { ProjectRepo, type ProjectRow } from "./repos/project.js";
 export { ScanStateRepo, type ScanStateRow } from "./repos/scan-state.js";
+
+export {
+  purgeAllData,
+  purgeProjectData,
+  pruneExpiredSessions,
+  retentionCutoff,
+  type PurgeSummary,
+} from "./maintenance.js";

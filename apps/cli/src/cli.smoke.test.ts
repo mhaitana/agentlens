@@ -15,7 +15,8 @@
  * the adapter at an empty override + the fixtures dir only.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { spawnSync } from "node:child_process";
+import { spawnSync, spawn, type ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm, readFile, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir, homedir } from "node:os";
 import { join, dirname } from "node:path";
@@ -192,12 +193,48 @@ describe("M1-11 CLI smoke (spec §25, §26)", () => {
     expect(ps.stdout).toContain("redacted-content"); // default mode
   });
 
+  it("privacy export + purge + retain exercise the local deletion controls (§3.2, §8, §16)", () => {
+    // export writes a JSON file under <home>/exports/ and reports the path.
+    const exp = runAgentlens(tempHome, ["privacy", "export", "--json"]);
+    expect(exp.status).toBe(0);
+    const expBody = JSON.parse(exp.stdout) as { file: string; sessions: number };
+    expect(expBody.file).toContain(join(tempHome, "exports"));
+    expect(expBody.sessions).toBeGreaterThanOrEqual(1);
+
+    // retain with the default 90-day window prunes nothing here (fixture is recent).
+    const ret = runAgentlens(tempHome, ["privacy", "retain", "--json"]);
+    expect(ret.status).toBe(0);
+    expect((JSON.parse(ret.stdout) as { pruned: number }).pruned).toBe(0);
+
+    // purge deletes all imported data; status afterwards shows zero sessions.
+    const purge = runAgentlens(tempHome, ["privacy", "purge", "--json"]);
+    expect(purge.status).toBe(0);
+    const purgeBody = JSON.parse(purge.stdout) as {
+      purged: boolean;
+      scope: string;
+      summary: { sessions: number };
+    };
+    expect(purgeBody.scope).toBe("all");
+    expect(purgeBody.summary.sessions).toBeGreaterThanOrEqual(1);
+
+    const after = runAgentlens(tempHome, ["status"]);
+    expect(after.stdout).toMatch(/sessions:\s+0/);
+  });
+
   it("--help is non-interactive and exits 0", () => {
     const r = runAgentlens(tempHome, ["--help"]);
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("agentlens");
     expect(r.stdout).toContain("scan");
     expect(r.stdout).toContain("report");
+  });
+
+  it("dashboard --help is non-interactive and exits 0", () => {
+    const r = runAgentlens(tempHome, ["dashboard", "--help"]);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("dashboard");
+    expect(r.stdout).toContain("--no-open");
+    expect(r.stdout).toContain("--port");
   });
 });
 
@@ -269,4 +306,82 @@ describe("F003 rules smoke (spec §13.10, §26)", () => {
     const on = runAgentlens(ruleHome, ["rules", "enable", "TOOLS-001"]);
     expect(on.status).toBe(0);
   });
+});
+
+describe("M2-6 dashboard launch (spec §13.8)", () => {
+  let dashHome: string;
+
+  beforeAll(async () => {
+    dashHome = await mkdtemp(join(tmpdir(), "agentlens-dash-e2e-"));
+    // init so the DB + config exist before launching the dashboard.
+    const init = runAgentlens(dashHome, ["init"]);
+    expect(init.status).toBe(0);
+  });
+
+  afterAll(async () => {
+    await rm(dashHome, { recursive: true, force: true }).catch(() => undefined);
+  });
+
+  /** Spawn the dashboard and resolve once stdout contains the URL line. */
+  function startDashboard(home: string): {
+    child: ChildProcess;
+    port: Promise<number>;
+  } {
+    const child = spawn(
+      process.execPath,
+      [CLI_BIN, "dashboard", "--no-open", "--api-only", "--port", "0"],
+      { cwd: join(here, "..", "..", ".."), env: { ...process.env, AGENTLENS_HOME: home } },
+    );
+    let buf = "";
+    const port = new Promise<number>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error("dashboard did not print URL in time")),
+        20_000,
+      );
+      child.stdout?.on("data", (d: Buffer) => {
+        buf += d.toString();
+        const m = buf.match(/127\.0\.0\.1:(\d+)/);
+        if (m && m[1]) {
+          clearTimeout(timer);
+          resolve(Number(m[1]));
+        }
+      });
+      child.on("error", (e) => {
+        clearTimeout(timer);
+        reject(e);
+      });
+      child.on("exit", (code) => {
+        clearTimeout(timer);
+        reject(new Error(`dashboard exited before printing URL (code=${code})`));
+      });
+    });
+    return { child, port };
+  }
+
+  it("starts the API on loopback, serves health, reuses a running instance, and shuts down cleanly", async () => {
+    const { child, port: portPromise } = startDashboard(dashHome);
+    const port = await portPromise;
+    expect(port).toBeGreaterThan(0);
+
+    // Health endpoint reachable on loopback (§13.8 "Start the local API").
+    const health = await fetch(`http://127.0.0.1:${port}/api/v1/health`);
+    expect(health.ok).toBe(true);
+    const healthBody = (await health.json()) as { status: string };
+    expect(healthBody.status).toBe("ok");
+
+    // Runtime record was written (§13.8 reuse support).
+    expect(existsSync(join(dashHome, "runtime", "server.json"))).toBe(true);
+
+    // A second launch reuses the healthy existing instance (§13.8).
+    const reuse = runAgentlens(dashHome, ["dashboard", "--no-open"]);
+    expect(reuse.status).toBe(0);
+    expect(reuse.stdout).toContain("Reusing running instance");
+
+    // Clean shutdown on SIGTERM removes the runtime record (§13.8).
+    child.kill("SIGTERM");
+    const code = await new Promise<number | null>((resolve) => child.on("exit", (c) => resolve(c)));
+    expect(code).toBe(0);
+    // Give the filesystem a moment, then the record should be gone.
+    expect(existsSync(join(dashHome, "runtime", "server.json"))).toBe(false);
+  }, 30_000);
 });

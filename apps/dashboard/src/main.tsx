@@ -1,14 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-
-function App() {
-  return (
-    <main>
-      <h1>AgentLens</h1>
-      <p>Local workflow intelligence for Claude Code.</p>
-    </main>
-  );
-}
+import { App } from "./App.js";
+import "./styles.css";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root element #root not found");

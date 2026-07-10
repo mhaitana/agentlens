@@ -1,0 +1,416 @@
+/**
+ * Versioned route tree under `/api/v1/*` (spec §17).
+ *
+ * All routes are registered against a Fastify instance with the security + error
+ * handlers already installed. Read routes apply read-side privacy gating (see
+ * privacy.ts) so content-bearing fields are stripped in `metadata-only` mode.
+ * Mutating routes are guarded by the runtime token (see security.ts).
+ */
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { homedir } from "node:os";
+import type { ServerDeps } from "./deps.js";
+import { badRequest, notFound } from "./errors.js";
+import { clampPage, paginate } from "./pagination.js";
+import {
+  countSessions,
+  listSessions,
+  getSession,
+  sessionTimeline,
+  listProjects,
+  listRecommendations,
+  type SessionQueryFilters,
+} from "./queries.js";
+import { gatePrompt, gateToolCall, gateCommandRun, gateFileActivity } from "./privacy.js";
+import {
+  computeAnalytics,
+  defaultRules,
+  RULE_METADATA,
+  type RuleOverrides,
+} from "@agentlens/analysis-engine";
+import type { ReportFilters, ReportPeriod } from "@agentlens/domain";
+import {
+  ProjectRepo,
+  SessionRepo,
+  schema,
+  eq,
+  purgeAllData,
+  purgeProjectData,
+  pruneExpiredSessions,
+} from "@agentlens/database";
+import { redactPath } from "@agentlens/redaction";
+import { databasePath, configPath } from "@agentlens/config";
+import { getConfigValue, setConfigValue, saveConfig } from "@agentlens/config";
+
+const PERIODS = ["day", "week", "month", "all"] as const;
+
+const PageQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+
+const SessionListQuerySchema = PageQuerySchema.extend({
+  projectId: z.string().optional(),
+  modelId: z.string().optional(),
+  status: z.string().optional(),
+  since: z.string().optional(),
+  until: z.string().optional(),
+  search: z.string().optional(),
+});
+
+const MetricsQuerySchema = z.object({
+  period: z.enum(PERIODS).optional(),
+  projectId: z.string().optional(),
+  project: z.string().optional(), // path (resolved to id via path-hash)
+  sessionId: z.string().optional(),
+});
+
+/** Build redaction options sufficient for path-hashing (mirrors buildPrivacy). */
+function pathHashOptions(deps: ServerDeps, repoPath: string) {
+  const mode = deps.config.privacy.mode;
+  return {
+    redactEmails: deps.config.privacy.redactEmails,
+    redactHomePath: mode === "redacted-content" ? true : deps.config.privacy.redactHomePath,
+    homePath: homedir(),
+    repoPath,
+    anonymiseRepoPath: mode === "redacted-content",
+    customPatterns: [],
+  };
+}
+
+/** Register every /api/v1/* route. */
+export function registerRoutes(app: FastifyInstance, deps: ServerDeps): void {
+  const { db } = deps;
+  // `config` and `mode` are intentionally `let`: POST /settings reassigns them
+  // (and deps.config) so all route-handler closures observe the updated
+  // values on subsequent requests without a server restart.
+  let config = deps.config;
+  let mode = config.privacy.mode;
+
+  // --- health -------------------------------------------------------------
+  app.get("/api/v1/health", () => ({
+    status: "ok",
+    version: "v1",
+    time: new Date().toISOString(),
+  }));
+
+  // --- status -------------------------------------------------------------
+  app.get("/api/v1/status", async () => {
+    const sessions = await new SessionRepo(db).list(1);
+    const projects = await listProjects(db);
+    const recs = await listRecommendations(db);
+    return {
+      home: deps.home,
+      configPath: configPath(deps.home),
+      dbPath: databasePath(deps.home),
+      privacyMode: mode,
+      sessions: sessions.length,
+      projects: projects.length,
+      recommendations: recs.length,
+    };
+  });
+
+  // --- onboarding ---------------------------------------------------------
+  app.get("/api/v1/onboarding", async () => {
+    const sources = await db.select().from(schema.sources);
+    const projects = await listProjects(db);
+    const sessions = await new SessionRepo(db).list(1);
+    return {
+      initialized: true,
+      hasData: sessions.length > 0,
+      privacyMode: mode,
+      sources: sources.map((s) => ({
+        id: s.id,
+        adapter: s.adapter,
+        displayName: s.displayName,
+        enabled: s.enabled,
+      })),
+      projectsCount: projects.length,
+      sessionsCount: await countSessions(db, {}),
+      exclusions: config.sources.claudeCode.excludedProjects ?? [],
+      whatAgentLensReads: [
+        "Claude Code transcript JSONL files (session/event records)",
+        "Hook events and OpenTelemetry telemetry (Phase 2, opt-in)",
+      ],
+      whereDataRemains: deps.home,
+    };
+  });
+
+  // --- scans (read-only status for Phase 1; scanning is via `agentlens scan`) ---
+  app.get("/api/v1/scans", async () => {
+    const sources = await db.select().from(schema.sources);
+    const scanState = await db.select().from(schema.scanState);
+    return { sources, scanState, note: "Trigger scans with `agentlens scan` (CLI)." };
+  });
+
+  // --- projects ----------------------------------------------------------
+  app.get("/api/v1/projects", async (req) => {
+    const q = PageQuerySchema.parse(req.query);
+    const params = clampPage(q.page, q.limit);
+    const all = await listProjects(db);
+    const offset = (params.page - 1) * params.limit;
+    const items = all.slice(offset, offset + params.limit);
+    return paginate(items, params, all.length);
+  });
+
+  app.get("/api/v1/projects/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const all = await listProjects(db);
+    const project = all.find((p) => p.id === id);
+    if (!project) return notFound(`Project ${id} not found`);
+    reply.send(project);
+    return reply;
+  });
+
+  // --- sessions -----------------------------------------------------------
+  app.get("/api/v1/sessions", async (req) => {
+    const q = SessionListQuerySchema.parse(req.query);
+    const params = clampPage(q.page, q.limit);
+    const filters: SessionQueryFilters = {
+      projectId: q.projectId,
+      modelId: q.modelId,
+      status: q.status,
+      since: q.since,
+      until: q.until,
+      search: q.search,
+    };
+    const total = await countSessions(db, filters);
+    const items = await listSessions(db, filters, params.page, params.limit);
+    return paginate(items, params, total);
+  });
+
+  app.get("/api/v1/sessions/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const session = await getSession(db, id);
+    if (!session) return notFound(`Session ${id} not found`);
+    const projects = await listProjects(db);
+    const project = projects.find((p) => p.id === session.projectId);
+    reply.send({ session, project: project ?? null });
+    return reply;
+  });
+
+  app.get("/api/v1/sessions/:id/events", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const session = await getSession(db, id);
+    if (!session) return notFound(`Session ${id} not found`);
+    const events = await sessionTimeline(db, id);
+    // Apply read-side privacy gating to content-bearing kinds.
+    reply.send(
+      events.map((e) => {
+        if (e.kind === "prompt")
+          return { ...e, data: gatePrompt(mode, e.data as Parameters<typeof gatePrompt>[1]) };
+        if (e.kind === "tool_call")
+          return { ...e, data: gateToolCall(mode, e.data as Parameters<typeof gateToolCall>[1]) };
+        if (e.kind === "command_run")
+          return {
+            ...e,
+            data: gateCommandRun(mode, e.data as Parameters<typeof gateCommandRun>[1]),
+          };
+        if (e.kind === "file_activity")
+          return {
+            ...e,
+            data: gateFileActivity(mode, e.data as Parameters<typeof gateFileActivity>[1]),
+          };
+        return e;
+      }),
+    );
+    return reply;
+  });
+
+  app.get("/api/v1/sessions/:id/recommendations", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const rows = await db
+      .select()
+      .from(schema.recommendations)
+      .where(eq(schema.recommendations.sessionId, id))
+      .orderBy(schema.recommendations.createdAt);
+    reply.send(rows);
+    return reply;
+  });
+
+  // --- events (global recent stream, privacy-gated) ----------------------
+  app.get("/api/v1/events", async (req) => {
+    const q = PageQuerySchema.extend({ sessionId: z.string().optional() }).parse(req.query);
+    if (!q.sessionId)
+      throw badRequest("sessionId is required (use /sessions/:id/events for a full timeline).");
+    const events = await sessionTimeline(db, q.sessionId);
+    return events.map((e) => {
+      if (e.kind === "prompt")
+        return { ...e, data: gatePrompt(mode, e.data as Parameters<typeof gatePrompt>[1]) };
+      if (e.kind === "tool_call")
+        return { ...e, data: gateToolCall(mode, e.data as Parameters<typeof gateToolCall>[1]) };
+      if (e.kind === "command_run")
+        return { ...e, data: gateCommandRun(mode, e.data as Parameters<typeof gateCommandRun>[1]) };
+      if (e.kind === "file_activity")
+        return {
+          ...e,
+          data: gateFileActivity(mode, e.data as Parameters<typeof gateFileActivity>[1]),
+        };
+      return e;
+    });
+  });
+
+  // --- prompts -----------------------------------------------------------
+  app.get("/api/v1/prompts", async (req) => {
+    const q = z.object({ sessionId: z.string() }).parse(req.query);
+    const rows = await db
+      .select()
+      .from(schema.prompts)
+      .where(eq(schema.prompts.sessionId, q.sessionId))
+      .orderBy(schema.prompts.sequence);
+    return rows.map((r) => gatePrompt(mode, r));
+  });
+
+  // --- metrics (full analytics snapshot) ---------------------------------
+  app.get("/api/v1/metrics", async (req) => {
+    const q = MetricsQuerySchema.parse(req.query);
+    const filters: ReportFilters = { period: (q.period ?? "week") as ReportPeriod };
+    if (q.sessionId) {
+      filters.sessionId = q.sessionId;
+    } else if (q.projectId) {
+      filters.projectId = q.projectId;
+    } else if (q.project) {
+      const pathHash = redactPath(q.project, pathHashOptions(deps, q.project)).pathHash;
+      const project = await new ProjectRepo(db).getByPathHash("claude-code", pathHash);
+      if (!project) throw notFound(`No imported project matches path "${q.project}".`);
+      filters.projectId = project.id;
+    }
+    return computeAnalytics(db, filters, {
+      minimumRecommendationConfidence: config.analysis.minimumRecommendationConfidence,
+      privacyMode: config.privacy.mode,
+      rules: defaultRules(),
+      ruleOverrides: config.analysis.ruleOverrides as RuleOverrides,
+      now: deps.now,
+    });
+  });
+
+  // --- recommendations ----------------------------------------------------
+  app.get("/api/v1/recommendations", async (req) => {
+    const q = z.object({ projectId: z.string().optional() }).parse(req.query);
+    return listRecommendations(db, q.projectId);
+  });
+
+  // Dismiss / restore a recommendation (§13.9 "Dismiss and restore actions").
+  // Token-gated mutations; only the lifecycle status changes — evidence is
+  // preserved so a restore returns the full recommendation.
+  app.post("/api/v1/recommendations/:id/dismiss", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    await db
+      .update(schema.recommendations)
+      .set({ status: "dismissed", updatedAt: new Date().toISOString() })
+      .where(eq(schema.recommendations.id, id));
+    reply.send({ id, status: "dismissed" });
+    return reply;
+  });
+
+  app.post("/api/v1/recommendations/:id/restore", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    await db
+      .update(schema.recommendations)
+      .set({ status: "active", updatedAt: new Date().toISOString() })
+      .where(eq(schema.recommendations.id, id));
+    reply.send({ id, status: "active" });
+    return reply;
+  });
+
+  // --- rules -------------------------------------------------------------
+  app.get("/api/v1/rules", () => {
+    const overrides = config.analysis.ruleOverrides ?? {};
+    return RULE_METADATA.map((m) => {
+      const o = overrides[m.id] as { enabled?: boolean } | undefined;
+      const enabled = o?.enabled === false ? false : true;
+      return { ...m, enabled };
+    });
+  });
+
+  // --- privacy -----------------------------------------------------------
+  app.get("/api/v1/privacy", () => ({
+    mode,
+    retentionDays: config.privacy.retentionDays,
+    redactEmails: config.privacy.redactEmails,
+    redactHomePath: config.privacy.redactHomePath,
+    customPatterns: config.privacy.customPatterns,
+    excludedProjects: config.sources.claudeCode.excludedProjects ?? [],
+    dataLocation: deps.home,
+    storedDataCategories: [
+      "sessions, prompts, model requests, tool calls, file activity, command runs, verification runs, compactions, recommendations",
+    ],
+  }));
+
+  app.post("/api/v1/privacy/purge", async (req, reply) => {
+    // Delete all imported data (keep config + schema). Mutation is token-gated.
+    // Optional `?projectId=` restricts the purge to a single project (§16).
+    const query = req.query as { projectId?: string };
+    if (query.projectId) {
+      const summary = await purgeProjectData(db, query.projectId);
+      reply.send({ purged: true, scope: "project", projectId: query.projectId, summary });
+      return reply;
+    }
+    const summary = await purgeAllData(db);
+    reply.send({ purged: true, scope: "all", summary });
+    return reply;
+  });
+
+  app.post("/api/v1/privacy/retain", async (_req, reply) => {
+    // Prune sessions older than the configured retention window (§8, §13.11
+    // "Retention and deletion work"). Mutation is token-gated.
+    const pruned = await pruneExpiredSessions(
+      db,
+      config.privacy.retentionDays,
+      new Date().toISOString(),
+    );
+    reply.send({ pruned, retentionDays: config.privacy.retentionDays });
+    return reply;
+  });
+
+  app.post("/api/v1/privacy/export", async (_req, reply) => {
+    const sessions = await listSessions(db, {}, 1, 10000);
+    const projects = await listProjects(db);
+    const recs = await listRecommendations(db);
+    reply.send({
+      exportedAt: new Date().toISOString(),
+      privacyMode: mode,
+      sessions,
+      projects,
+      recommendations: recs,
+    });
+    return reply;
+  });
+
+  // --- settings ----------------------------------------------------------
+  app.get("/api/v1/settings", () => ({
+    privacy: config.privacy,
+    sources: config.sources,
+    analysis: config.analysis,
+    dashboard: config.dashboard,
+  }));
+
+  app.post("/api/v1/settings", async (req, reply) => {
+    const body = z.object({ key: z.string().min(1), value: z.unknown() }).parse(req.body);
+    const next = setConfigValue(config, body.key, body.value);
+    await saveConfig(deps.home, next);
+    // Reflect the change in the in-memory deps so subsequent GET /privacy,
+    // /settings, /status reads return the updated value without a restart.
+    deps.config = next;
+    config = next;
+    mode = next.privacy.mode;
+    reply.send({ ok: true, key: body.key });
+    return reply;
+  });
+
+  // --- live (Phase 1: status only; SSE streaming arrives in Phase 2 P2-9) ---
+  app.get("/api/v1/live", () => ({
+    status: "ok",
+    streaming: false,
+    note: "Live SSE streaming is delivered in Phase 2 (spec §14.10).",
+    time: new Date().toISOString(),
+  }));
+
+  // Expose getConfigValue for completeness (read single config value).
+  app.get("/api/v1/settings/:key", async (req, reply) => {
+    const { key } = req.params as { key: string };
+    const value = getConfigValue(config, key);
+    reply.send({ key, value });
+    return reply;
+  });
+}

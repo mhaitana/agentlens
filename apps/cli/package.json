@@ -14,30 +14,32 @@
     "build": "tsup src/index.ts --format esm --clean",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:integration": "vitest run src/cli.smoke.test.ts"
   },
   "dependencies": {
-    "@agentlens/domain": "workspace:*",
-    "@agentlens/config": "workspace:*",
-    "@agentlens/shared": "workspace:*",
-    "@agentlens/database": "workspace:*",
-    "@agentlens/source-adapter": "workspace:*",
-    "@agentlens/claude-adapter": "workspace:*",
     "@agentlens/analysis-engine": "workspace:*",
+    "@agentlens/claude-adapter": "workspace:*",
+    "@agentlens/config": "workspace:*",
+    "@agentlens/database": "workspace:*",
+    "@agentlens/domain": "workspace:*",
+    "@agentlens/local-api": "workspace:*",
     "@agentlens/recommendations": "workspace:*",
-    "@agentlens/reporting": "workspace:*",
     "@agentlens/redaction": "workspace:*",
+    "@agentlens/reporting": "workspace:*",
+    "@agentlens/shared": "workspace:*",
+    "@agentlens/source-adapter": "workspace:*",
+    "cli-table3": "^0.6.5",
     "commander": "^12.1.0",
-    "picocolors": "^1.1.1",
     "ora": "^8.1.1",
-    "cli-table3": "^0.6.5"
+    "picocolors": "^1.1.1"
   },
   "license": "MIT",
   "devDependencies": {
+    "@agentlens/test-fixtures": "workspace:*",
+    "@types/node": "^22.10.0",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "@types/node": "^22.10.0",
-    "@agentlens/test-fixtures": "workspace:*"
+    "vitest": "^2.1.8"
   }
 }

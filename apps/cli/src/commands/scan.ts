@@ -12,6 +12,7 @@ import { Command } from "commander";
 import pc from "picocolors";
 import type { DiscoveryContext } from "@agentlens/source-adapter";
 import { runPipeline, buildPrivacy, type PipelineResult } from "../import/index.js";
+import { pruneExpiredSessions } from "@agentlens/database";
 import {
   resolveHome,
   openAgentLensDb,
@@ -25,14 +26,16 @@ interface ScanJsonSummary {
   discovered: number;
   imported: number;
   skipped: number;
+  pruned: number;
   files: Array<{ uri: string; skipped: boolean; reason: string; diagnostics: number }>;
 }
 
-function toSummary(result: PipelineResult): ScanJsonSummary {
+function toSummary(result: PipelineResult, pruned: number): ScanJsonSummary {
   return {
     discovered: result.discovered,
     imported: result.imported,
     skipped: result.skipped,
+    pruned,
     files: result.files.map((f) => ({
       uri: f.uri,
       skipped: f.decision.skip,
@@ -103,8 +106,20 @@ export function makeScanCommand(): Command {
               },
         });
 
+        // Enforce retention: prune sessions older than the configured window
+        // (§8 "configurable retention", §13.11 "Retention and deletion work").
+        // Skipped in --dry-run (no data was written) and when retention is off.
+        let pruned = 0;
+        if (!opts.dryRun) {
+          pruned = await pruneExpiredSessions(
+            db.db,
+            config.privacy.retentionDays,
+            new Date().toISOString(),
+          );
+        }
+
         if (opts.json) {
-          process.stdout.write(JSON.stringify(toSummary(result), null, 2) + "\n");
+          process.stdout.write(JSON.stringify(toSummary(result, pruned), null, 2) + "\n");
         } else {
           process.stdout.write(
             pc.bold(
@@ -114,6 +129,13 @@ export function makeScanCommand(): Command {
               ),
             ),
           );
+          if (pruned > 0) {
+            process.stdout.write(
+              pc.dim(
+                `  Retention: pruned ${pruned} session(s) older than ${config.privacy.retentionDays} day(s).\n`,
+              ),
+            );
+          }
           const diags = result.files.flatMap((f) => f.diagnostics);
           if (diags.length > 0) {
             process.stdout.write(
