@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS prompts (
   redacted_content TEXT,
   content_hash TEXT NOT NULL,
   character_count INTEGER NOT NULL,
-  approx_token_count INTEGER,
+  approximate_token_count INTEGER,
   features TEXT NOT NULL,
   FOREIGN KEY (session_id) REFERENCES sessions(id)
 );
@@ -215,7 +215,9 @@ CREATE TABLE IF NOT EXISTS recommendations (
   explanation TEXT NOT NULL,
   evidence TEXT NOT NULL,
   estimated_impact TEXT,
-  remediation TEXT
+  remediation TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS recommendations_session_idx ON recommendations(session_id);
 CREATE INDEX IF NOT EXISTS recommendations_project_idx ON recommendations(project_id);

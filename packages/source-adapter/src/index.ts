@@ -57,6 +57,8 @@ export interface ScanInput {
   project?: string;
   /** Discover and parse without persisting. */
   dryRun: boolean;
+  /** Resume streaming at this byte offset (spec §13.3). */
+  startOffset?: number;
   /** Cancellation. */
   signal?: AbortSignal;
   /** Progress callback. */
@@ -87,6 +89,12 @@ export interface SessionEndEvent extends NormalisedEventBase {
   /** Duration in ms when known. */
   durationMs?: number;
   completionStatus?: "completed" | "interrupted" | "failed" | "unknown";
+  /**
+   * Whether the source recorded an explicit end (e.g. a terminal stop_reason).
+   * When false, the adapter synthesised the end at end-of-stream — the tail of
+   * the transcript is missing (§13.4 partial-tail-missing). Defaults to false.
+   */
+  explicit?: boolean;
 }
 
 export interface PromptEvent extends NormalisedEventBase {
@@ -101,6 +109,13 @@ export interface ModelRequestEvent extends NormalisedEventBase {
   kind: "model-request";
   modelId: string;
   modelFamily?: string;
+  /**
+   * Source-native message id (e.g. Claude's `message.id`). Stable across
+   * re-imports and unique per API response, so the importer uses it as the
+   * deterministic row id — avoiding collisions when two requests share a
+   * second-precision timestamp.
+   */
+  sourceMessageId?: string;
   promptSequence?: number;
   inputTokens?: number;
   outputTokens?: number;

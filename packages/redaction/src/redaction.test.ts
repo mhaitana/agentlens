@@ -27,6 +27,20 @@ describe("redactText — built-in detectors", () => {
     expect(redacted).not.toContain(tok);
   });
 
+  it("redacts an OpenAI project key (sk-proj-…) and an Anthropic key (sk-ant-…)", () => {
+    const openai = "sk-proj-AbCdEfGh1234567890";
+    const anthropic = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz123456";
+    const { redacted, findings } = redactText(`keys: ${openai} ${anthropic}`, baseOpts);
+    expect(redacted).not.toContain(openai);
+    expect(redacted).not.toContain(anthropic);
+    expect(findings.some((f) => f.label === "openai-anthropic-key")).toBe(true);
+  });
+
+  it("does not redact ordinary sk- prefixes (e.g. 'sk-ip')", () => {
+    const { redacted } = redactText("the sk-ip of the document", baseOpts);
+    expect(redacted).toBe("the sk-ip of the document");
+  });
+
   it("redacts a password assignment", () => {
     const { redacted, findings } = redactText("password=hunter2hunter2", baseOpts);
     expect(redacted).not.toContain("hunter2hunter2");

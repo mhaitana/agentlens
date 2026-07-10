@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { rm } from "node:fs/promises";
 import {
   openDatabase,
   closeDatabase,
@@ -17,6 +18,11 @@ async function withDb<T>(
     return await fn(database);
   } finally {
     await closeDatabase(database);
+    await Promise.all([
+      rm(database.path, { force: true }),
+      rm(`${database.path}-wal`, { force: true }),
+      rm(`${database.path}-shm`, { force: true }),
+    ]);
   }
 }
 

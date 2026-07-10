@@ -1,5 +1,8 @@
 import { createClient, type Client as LibSqlClient } from "@libsql/client";
 import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { ensureDataDirs, databasePath, restrictFile } from "@agentlens/config";
 import * as schema from "./schema.js";
 import { MIGRATIONS, LATEST_SCHEMA_VERSION } from "./migrations.js";
@@ -7,33 +10,43 @@ import { MIGRATIONS, LATEST_SCHEMA_VERSION } from "./migrations.js";
 /** Bundled libsql client + drizzle instance. */
 export interface Database {
   client: LibSqlClient;
-  db: LibSQLDatabase<typeof schema>;
+  db: DrizzleDb;
   path: string;
 }
+
+/** The typed Drizzle instance backed by this package's schema. Repos accept
+ *  this so callers can pass the `Database.db` they already hold. */
+export type DrizzleDb = LibSQLDatabase<typeof schema>;
 
 /**
  * Open (or create) the AgentLens database and run pending migrations.
  *
  * @param home AgentLens data home (config resolves the SQLite path inside it).
  * @param nowIso ISO timestamp recorded for migration application.
- * @param inMemory when true, use an ephemeral in-memory database (tests).
+ * @param inMemory when true, use an ephemeral temp-file database (tests).
+ *
+ * Note: libsql `:memory:` gives each connection a fresh empty DB, which breaks
+ * drizzle's `db.transaction()` (the transaction's connection sees no schema).
+ * `file::memory:?cache=shared` would share one global DB across all callers,
+ * destroying test isolation. A unique temp file gives both transaction support
+ * and per-instance isolation, and exercises the real file-based code path.
  */
 export async function openDatabase(opts: {
   home: string;
   nowIso: string;
   inMemory?: boolean;
 }): Promise<Database> {
-  const path = opts.inMemory ? ":memory:" : databasePath(opts.home);
-
-  if (!opts.inMemory) {
+  let path: string;
+  if (opts.inMemory) {
+    path = join(tmpdir(), `agentlens-test-${randomUUID()}.sqlite`);
+  } else {
     await ensureDataDirs(opts.home);
+    path = databasePath(opts.home);
   }
 
-  const client = createClient({
-    url: opts.inMemory ? ":memory:" : `file:${path}`,
-  });
+  const client = createClient({ url: `file:${path}` });
 
-  await applyPragmas(client, opts.inMemory ?? false);
+  await applyPragmas(client, false);
   await migrateDatabase(client, opts.nowIso);
 
   if (!opts.inMemory) {

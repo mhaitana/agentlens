@@ -1,9 +1,8 @@
 import { eq } from "drizzle-orm";
-import type { LibSQLDatabase } from "drizzle-orm/libsql";
-import type { Session } from "@agentlens/domain";
+import type { DrizzleDb } from "../client.js";
 import { sessions } from "../schema.js";
 
-type Db = LibSQLDatabase<Record<string, never>>;
+type Db = DrizzleDb;
 
 /** Row shape inserted into the sessions table. */
 export interface SessionRow {
@@ -96,5 +95,3 @@ function toRow(r: typeof sessions.$inferSelect): SessionRow {
     importProvenance: r.importProvenance,
   };
 }
-
-export type { Session };

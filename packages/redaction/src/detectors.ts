@@ -48,6 +48,15 @@ export const DETECTORS: readonly Detector[] = [
     label: "stripe-key",
     pattern: /\b(?:sk|pk|rk)_(?:live|test)_[0-9A-Za-z]{24,}\b/g,
   },
+  // OpenAI / Anthropic API keys (case-sensitive format). OpenAI project keys
+  // are `sk-proj-…`; Anthropic keys are `sk-ant-api03-…`. Both are long, but
+  // we use a 16-char floor so short synthetic test tokens still match while
+  // everyday `sk-` prefixes (e.g. "sk-ip") do not.
+  {
+    category: "api-key",
+    label: "openai-anthropic-key",
+    pattern: /\bsk-(?:proj|ant)-[A-Za-z0-9_-]{16,}\b/g,
+  },
   // Bearer / Authorization header values (case-insensitive keyword).
   {
     category: "auth-header",

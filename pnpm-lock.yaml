@@ -86,6 +86,9 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
     devDependencies:
+      "@agentlens/test-fixtures":
+        specifier: workspace:*
+        version: link:../../packages/test-fixtures
       "@types/node":
         specifier: ^22.10.0
         version: 22.20.1
@@ -206,7 +209,13 @@ importers:
       "@agentlens/source-adapter":
         specifier: workspace:*
         version: link:../source-adapter
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
+      "@agentlens/test-fixtures":
+        specifier: workspace:*
+        version: link:../test-fixtures
       "@types/node":
         specifier: ^22.10.0
         version: 22.20.1

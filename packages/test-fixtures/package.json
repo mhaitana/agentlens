@@ -10,11 +10,12 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./claude-code/*": "./src/claude-code/*"
+    "./claude-code/*": "./claude-code/*"
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "claude-code"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
