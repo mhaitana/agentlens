@@ -1,0 +1,42 @@
+{
+  "name": "@agentlens/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "agentlens": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@agentlens/domain": "workspace:*",
+    "@agentlens/config": "workspace:*",
+    "@agentlens/shared": "workspace:*",
+    "@agentlens/database": "workspace:*",
+    "@agentlens/source-adapter": "workspace:*",
+    "@agentlens/claude-adapter": "workspace:*",
+    "@agentlens/analysis-engine": "workspace:*",
+    "@agentlens/recommendations": "workspace:*",
+    "@agentlens/reporting": "workspace:*",
+    "@agentlens/redaction": "workspace:*",
+    "commander": "^12.1.0",
+    "picocolors": "^1.1.1",
+    "ora": "^8.1.1",
+    "cli-table3": "^0.6.5"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "@types/node": "^22.10.0"
+  }
+}
