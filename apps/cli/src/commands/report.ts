@@ -10,7 +10,8 @@ import { Command } from "commander";
 import pc from "picocolors";
 import { writeFile } from "node:fs/promises";
 import type { ReportFilters, ReportPeriod } from "@agentlens/domain";
-import { computeAnalytics } from "@agentlens/analysis-engine";
+import { computeAnalytics, defaultRules } from "@agentlens/analysis-engine";
+import type { RuleOverrides } from "@agentlens/analysis-engine";
 import { renderReport, COST_ESTIMATE_LABEL, type ReportFormat } from "@agentlens/reporting";
 import { redactPath } from "@agentlens/redaction";
 import { ProjectRepo } from "@agentlens/database";
@@ -71,6 +72,10 @@ export function makeReportCommand(): Command {
         const snapshot = await computeAnalytics(db.db, filters, {
           minimumRecommendationConfidence: config.analysis.minimumRecommendationConfidence,
           privacyMode: config.privacy.mode,
+          rules: defaultRules(),
+          // Config overrides are a loose record; the engine tolerates partial /
+          // unknown shapes (it only reads `enabled` and `thresholds`).
+          ruleOverrides: config.analysis.ruleOverrides as RuleOverrides,
         });
 
         const rendered = renderReport(snapshot, format);

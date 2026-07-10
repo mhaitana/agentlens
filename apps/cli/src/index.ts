@@ -13,6 +13,7 @@ import { makeScanCommand } from "./commands/scan.js";
 import { makeReportCommand } from "./commands/report.js";
 import { makeConfigCommand } from "./commands/config.js";
 import { makePrivacyCommand } from "./commands/privacy.js";
+import { makeRulesCommand } from "./commands/rules.js";
 import { makeStatusCommand } from "./commands/status.js";
 import { makeVersionCommand } from "./commands/version.js";
 
@@ -28,6 +29,7 @@ program.addCommand(makeScanCommand());
 program.addCommand(makeReportCommand());
 program.addCommand(makeConfigCommand());
 program.addCommand(makePrivacyCommand());
+program.addCommand(makeRulesCommand());
 program.addCommand(makeStatusCommand());
 program.addCommand(makeVersionCommand());
 

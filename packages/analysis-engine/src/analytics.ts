@@ -14,6 +14,7 @@
 
 import { eq, inArray } from "@agentlens/database";
 import { schema, type DrizzleDb } from "@agentlens/database";
+import { generateRecommendations } from "@agentlens/recommendations";
 import {
   exact,
   estimated,
@@ -26,15 +27,20 @@ import {
   type Confidence,
   type ModelUsageRow,
   type ProvenancedValue,
+  type RedactedSecretFinding,
+  type RecommendationRule,
   type ReportFilters,
   type RepeatedOperation,
   type ScanProvenanceSummary,
+  type SensitivePathFinding,
+  type SecurityMetrics,
   type ToolUsageRow,
   type UsageMetrics,
   type ToolBehaviourMetrics,
   type WorkflowMetrics,
 } from "@agentlens/domain";
 import { computeCostSummary, type CostRequestRow } from "./cost.js";
+import { createRuleEngine, type RuleOverrides } from "./rule-engine.js";
 
 /** Search-capable tools (repeated-search detection, §13.5). */
 const SEARCH_TOOLS = new Set(["Grep", "Glob", "WebSearch", "WebFetch"]);
@@ -42,6 +48,56 @@ const SEARCH_TOOLS = new Set(["Grep", "Glob", "WebSearch", "WebFetch"]);
 const WRITE_OPERATIONS = new Set(["write", "edit", "create", "delete", "replace", "move"]);
 /** Default repetition threshold (occurrences) for repeated-operation rules. */
 const DEFAULT_REPETITION_THRESHOLD = 3;
+
+/**
+ * §13.10 SECURITY-001 sensitive-path classifier. Operates on the *redacted*
+ * path (the basename is retained, the home/repo prefix is anonymised), so the
+ * raw path is never needed and no schema/import change is required. A match
+ * yields a stable category; non-matches return `null`.
+ *
+ * Order matters: more specific patterns first.
+ */
+const SENSITIVE_PATH_PATTERNS: ReadonlyArray<{ category: string; re: RegExp }> = [
+  { category: "env-file", re: /(^|\/)\.env(\.|$)/i },
+  { category: "private-key", re: /\.pem$|\.key$|id_rsa|id_ed25519|id_ecdsa/i },
+  { category: "ssh-directory", re: /\/\.ssh\//i },
+  {
+    category: "cloud-credential",
+    re: /\/\.aws\/credentials|\/\.aws\/config|\/\.gcp\/|credentials\.json/i,
+  },
+  { category: "secret-directory", re: /\/\.gnupg\/|\/\.config\/gh\/|\.netrc|\.npmrc|\.pypirc/i },
+  { category: "credential-file", re: /credentials|secret\.|secrets\.|token\.|\.p12$|\.pfx$/i },
+];
+
+function classifySensitivePath(redactedPath: string): string | null {
+  for (const p of SENSITIVE_PATH_PATTERNS) {
+    if (p.re.test(redactedPath)) return p.category;
+  }
+  return null;
+}
+
+/** §13.10 SECURITY-002: extract `[REDACTED:<label>]` markers from stored redacted content. */
+const REDACTED_MARKER = /\[REDACTED:([^\]]+)\]/g;
+
+/** Map a redaction detector label to its category (kept in sync with @agentlens/redaction detectors). */
+const LABEL_TO_CATEGORY: ReadonlyRecord<string, string> = {
+  "private-key": "private-key",
+  jwt: "jwt",
+  "aws-access-key": "cloud-credential",
+  "google-api-key": "api-key",
+  "github-token": "api-key",
+  "slack-token": "api-key",
+  "stripe-key": "api-key",
+  "openai-anthropic-key": "api-key",
+  "auth-header": "auth-header",
+  "cloud-credential": "cloud-credential",
+  "connection-string": "connection-string",
+  password: "password",
+  cookie: "cookie",
+  email: "email",
+};
+
+type ReadonlyRecord<K extends string, V> = { readonly [k in K]: V };
 
 export interface ComputeAnalyticsOptions {
   /** Confidence floor for recommendations (passed through to the snapshot). */
@@ -52,6 +108,16 @@ export interface ComputeAnalyticsOptions {
   now?: Date;
   /** Repetition threshold for repeated reads/searches/commands. */
   repetitionThreshold?: number;
+  /**
+   * Recommendation rules to run over the snapshot. When omitted, no rules run
+   * and `snapshot.recommendations` stays empty (callers that only need metrics
+   * pay no rule-engine cost). When provided, the rules run in a versioned
+   * engine, candidates are persisted (dedup + supersession) and the ranked
+   * active recommendations are returned on the snapshot (§15.1, §15.2).
+   */
+  rules?: RecommendationRule[];
+  /** Per-rule enable/disable + threshold overrides resolved at run time. */
+  ruleOverrides?: RuleOverrides;
 }
 
 interface ResolvedWindow {
@@ -164,10 +230,14 @@ export async function computeAnalytics(
   const completeness = computeCompletenessSummary(sessionRows);
   const completion = computeCompletionSummary(sessionRows);
 
+  // --- Security (§13.10 SECURITY-001/002) -------------------------------
+  const security = computeSecurityMetrics(fileActivityRows, promptRows, toolCallRows);
+
   // --- Scan provenance ---------------------------------------------------
   const scanProvenance = await computeScanProvenance(db, sessionRows);
 
-  return {
+  // Base snapshot (recommendations filled below when rules are provided).
+  const snapshot: AnalyticsSnapshot = {
     generatedAt,
     filters,
     privacyMode: options.privacyMode ?? sessionRows[0]?.privacyMode ?? "redacted-content",
@@ -182,9 +252,33 @@ export async function computeAnalytics(
     completeness,
     completion,
     scanProvenance,
-    recommendations: [], // M1-6 framework emits candidates; M2 persists recommendations.
+    security,
+    recommendations: [],
     minimumRecommendationConfidence: options.minimumRecommendationConfidence,
   };
+
+  // --- Recommendations (§15.1, §15.2) ------------------------------------
+  // Rules are optional so a metrics-only caller pays no rule-engine cost. When
+  // provided, the versioned engine runs over this snapshot, candidates are
+  // persisted (dedup + supersession via @agentlens/recommendations) and the
+  // ranked active set is attached. The engine is constructed fresh per run so
+  // config overrides are resolved against the current config (§15.1).
+  if (options.rules && options.rules.length > 0) {
+    const engine = createRuleEngine(options.rules, options.ruleOverrides);
+    const result = await engine.run(
+      snapshot,
+      filters,
+      generatedAt,
+      options.minimumRecommendationConfidence,
+    );
+    const generated = await generateRecommendations(db, result.candidates, {
+      minimumConfidence: options.minimumRecommendationConfidence,
+      now: generatedAt,
+    });
+    snapshot.recommendations = generated.recommendations;
+  }
+
+  return snapshot;
 }
 
 // ---------------------------------------------------------------------------
@@ -422,6 +516,9 @@ function computeToolBehaviour(
   const largestOut = maxOrNull(toolCallRows, (t) => t.outputSizeBytes);
   const testCount = commandRows.filter((c) => c.classification === "test").length;
   const buildCount = commandRows.filter((c) => c.classification === "build").length;
+  const broadTestRunCount = commandRows.filter(
+    (c) => c.classification === "test" && c.scope === "broad",
+  ).length;
 
   return {
     mostUsedTools,
@@ -438,6 +535,7 @@ function computeToolBehaviour(
     largestToolOutputsBytes: sizePv(largestOut),
     testCommandFrequency: exact(testCount),
     buildCommandFrequency: exact(buildCount),
+    broadTestRunCount: exact(broadTestRunCount),
   };
 }
 
@@ -565,6 +663,22 @@ function computeWorkflowMetrics(
   for (const arr of writesBySessionTimeline.values())
     arr.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
+  // VERIFY-001: sessions with write activity but no recognised verification run.
+  let sessionsWithChangesButNoVerification = 0;
+  for (const s of sessionRows) {
+    const hadWrites = (writesBySessionTimeline.get(s.id)?.length ?? 0) > 0;
+    const hadVerification = (verifyBySession.get(s.id)?.length ?? 0) > 0;
+    if (hadWrites && !hadVerification) sessionsWithChangesButNoVerification += 1;
+  }
+
+  // VERIFY-004 (conservative): sessions with cross-cutting writes (>= threshold
+  // distinct paths) but only a single narrow verification kind observed.
+  const narrowVerificationOnlySessions = countNarrowVerificationOnly(
+    sessionRows,
+    writesBySessionTimeline,
+    verifyBySession,
+  );
+
   let sessionsEndingAfterSuccessfulVerification = 0;
   let sessionsEndingWithKnownFailures = 0;
   let changesAfterFinalVerification = 0;
@@ -646,6 +760,14 @@ function computeWorkflowMetrics(
       correctivePromptCount,
       "Prompt following a failed verification run",
     ),
+    sessionsWithChangesButNoVerification: inferred(
+      sessionsWithChangesButNoVerification,
+      "Sessions with write activity but no recognised verification run",
+    ),
+    narrowVerificationOnlySessions: inferred(
+      narrowVerificationOnlySessions,
+      "Sessions with cross-cutting writes but only one verification kind (conservative)",
+    ),
     medianTimeToFirstEditMs: durationPv(
       median(timeToFirstEdit),
       timeToFirstEdit.length > 0 ? "inferred" : "unknown",
@@ -657,6 +779,26 @@ function computeWorkflowMetrics(
   };
 }
 
+/** VERIFY-004 (conservative): cross-cutting writes but only one narrow verification kind. */
+function countNarrowVerificationOnly(
+  sessionRows: (typeof schema.sessions.$inferSelect)[],
+  writesBySessionTimeline: Map<string, (typeof schema.fileActivity.$inferSelect)[]>,
+  verifyBySession: Map<string, (typeof schema.verificationRuns.$inferSelect)[]>,
+): number {
+  const CROSS_CUTTING_PATH_THRESHOLD = 3;
+  let count = 0;
+  for (const s of sessionRows) {
+    const writes = writesBySessionTimeline.get(s.id) ?? [];
+    if (writes.length === 0) continue;
+    const distinctPaths = new Set(writes.map((w) => w.pathHash)).size;
+    if (distinctPaths < CROSS_CUTTING_PATH_THRESHOLD) continue;
+    const verifies = verifyBySession.get(s.id) ?? [];
+    const distinctKinds = new Set(verifies.map((v) => v.kind)).size;
+    if (distinctKinds <= 1) count += 1;
+  }
+  return count;
+}
+
 function ratioPv(value: number | null): ProvenancedValue<number | null> {
   if (value === null) return unknown<number>("No write file activity in this window.");
   return exact(value);
@@ -665,6 +807,112 @@ function ratioPv(value: number | null): ProvenancedValue<number | null> {
 function exactOrUnknown(value: number | null): ProvenancedValue<number | null> {
   if (value === null) return unknown<number>("No sessions in this window.");
   return exact(value);
+}
+
+// ---------------------------------------------------------------------------
+// Security metrics (§13.10 SECURITY-001/002)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute security-behaviour findings purely from already-persisted, already
+ * redacted rows — no schema or import-pipeline change required (§3.2, §8.4).
+ *
+ * SECURITY-001: sensitive-path access, detected by classifying the *redacted*
+ * path basename (the raw path is never present).
+ *
+ * SECURITY-002: secrets the redaction pipeline scrubbed, detected by scanning
+ * stored redacted content for `[REDACTED:<label>]` markers. In metadata-only
+ * mode no content is stored, so no findings are produced (evidence before
+ * advice — §3.3).
+ */
+function computeSecurityMetrics(
+  fileActivityRows: (typeof schema.fileActivity.$inferSelect)[],
+  promptRows: (typeof schema.prompts.$inferSelect)[],
+  toolCallRows: (typeof schema.toolCalls.$inferSelect)[],
+): SecurityMetrics {
+  // --- SECURITY-001: sensitive path access ---
+  const byPath = new Map<
+    string,
+    {
+      redactedPath: string;
+      category: string;
+      operations: number;
+      sessions: Set<string>;
+      operationsSeen: Set<string>;
+    }
+  >();
+  for (const f of fileActivityRows) {
+    const label = f.redactedPath;
+    if (!label) continue; // metadata-only: no path retained → no finding.
+    const category = classifySensitivePath(label);
+    if (!category) continue;
+    let entry = byPath.get(f.pathHash);
+    if (!entry) {
+      entry = {
+        redactedPath: label,
+        category,
+        operations: 0,
+        sessions: new Set<string>(),
+        operationsSeen: new Set<string>(),
+      };
+      byPath.set(f.pathHash, entry);
+    }
+    entry.operations += 1;
+    entry.sessions.add(f.sessionId);
+    entry.operationsSeen.add(f.operation);
+  }
+  const sensitivePathAccess: SensitivePathFinding[] = [];
+  for (const [pathHash, e] of byPath) {
+    sensitivePathAccess.push({
+      pathHash,
+      redactedPath: e.redactedPath,
+      category: e.category,
+      operations: e.operations,
+      sessions: e.sessions.size,
+      operationsSeen: [...e.operationsSeen].sort(),
+    });
+  }
+  sensitivePathAccess.sort(
+    (a, b) => b.operations - a.operations || a.pathHash.localeCompare(b.pathHash),
+  );
+
+  // --- SECURITY-002: redacted secret findings ---
+  const byLabel = new Map<
+    string,
+    { label: string; category: string; count: number; sessions: Set<string> }
+  >();
+  const tally = (text: string | null | undefined, sessionId: string): void => {
+    if (!text) return;
+    REDACTED_MARKER.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = REDACTED_MARKER.exec(text)) !== null) {
+      const label = m[1];
+      if (!label) continue;
+      const category = LABEL_TO_CATEGORY[label] ?? "secret";
+      let entry = byLabel.get(label);
+      if (!entry) {
+        entry = { label, category, count: 0, sessions: new Set<string>() };
+        byLabel.set(label, entry);
+      }
+      entry.count += 1;
+      entry.sessions.add(sessionId);
+    }
+  };
+  for (const p of promptRows) tally(p.redactedContent, p.sessionId);
+  for (const t of toolCallRows) tally(t.sanitisedInput, t.sessionId);
+
+  const redactedSecretFindings: RedactedSecretFinding[] = [];
+  for (const [, e] of byLabel) {
+    redactedSecretFindings.push({
+      category: e.category,
+      label: e.label,
+      count: e.count,
+      sessions: e.sessions.size,
+    });
+  }
+  redactedSecretFindings.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+  return { sensitivePathAccess, redactedSecretFindings };
 }
 
 // ---------------------------------------------------------------------------
@@ -787,6 +1035,7 @@ function emptySnapshot(
       largestToolOutputsBytes: unknownNum,
       testCommandFrequency: zero,
       buildCommandFrequency: zero,
+      broadTestRunCount: zero,
     },
     workflow: {
       filesChangedPerSession: unknownNum,
@@ -796,6 +1045,8 @@ function emptySnapshot(
       sessionsEndingWithKnownFailures: zero,
       changesAfterFinalVerification: zero,
       correctivePromptCount: zero,
+      sessionsWithChangesButNoVerification: zero,
+      narrowVerificationOnlySessions: zero,
       medianTimeToFirstEditMs: unknownNum,
       medianTimeBetweenFinalEditAndVerificationMs: unknownNum,
     },
@@ -813,6 +1064,7 @@ function emptySnapshot(
     },
     completion: { total: 0, completed: 0, interrupted: 0, failed: 0, unknown: 0 },
     scanProvenance: { sourceId: "unknown", importedSessions: 0, skippedSessions: 0 },
+    security: { sensitivePathAccess: [], redactedSecretFindings: [] },
     recommendations: [],
     minimumRecommendationConfidence: options.minimumRecommendationConfidence,
   };

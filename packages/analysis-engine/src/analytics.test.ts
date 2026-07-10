@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { rm } from "node:fs/promises";
 import { openDatabase, closeDatabase, schema, type Database } from "@agentlens/database";
 import { computeAnalytics } from "./analytics.js";
+import { defaultRules } from "./rules/index.js";
 
 const NOW = "2026-07-10T12:00:00.000Z";
 const SESSION_STARTED = "2026-07-09T10:00:00.000Z";
@@ -344,6 +345,115 @@ describe("computeAnalytics (§13.5)", () => {
       const mystery = snapshot.cost.byModel.find((b) => b.modelId === "claude-mystery-9");
       expect(mystery?.usd).toBeNull();
       expect(mystery?.provenance).toBe("unknown");
+    });
+  });
+
+  it("runs the rule engine end-to-end and persists recommendations (F003)", async () => {
+    await withDb(async (database) => {
+      await seedSession(database);
+      const { db } = database;
+      // Add two more reads of the same path (3 total, no intervening edit) so
+      // TOOLS-001 (minOccurrences: 3) fires, and add a sensitive-path read so
+      // SECURITY-001 fires. Reuse the seeded pathHash "hash-auth".
+      for (let i = 0; i < 2; i++) {
+        const tcId = `tc:claude-code:toolu_read_extra_${i}`;
+        await db.insert(schema.toolCalls).values({
+          id: tcId,
+          sessionId: SESSION_ID,
+          toolUseId: `toolu_read_extra_${i}`,
+          toolName: "Read",
+          startedAt: `2026-07-09T10:00:1${i}.000Z`,
+          endedAt: `2026-07-09T10:00:1${i}.500Z`,
+          durationMs: 400,
+          success: true,
+          failureType: "none",
+          permissionOutcome: "allowed",
+          inputSizeBytes: 40,
+          outputSizeBytes: 120,
+          sourceProvenance: "claude-code@0.1.0/parser@1",
+        });
+        await db.insert(schema.fileActivity).values({
+          id: `${tcId}:file`,
+          sessionId: SESSION_ID,
+          toolCallId: tcId,
+          redactedPath: "[REPO]/src/auth.ts",
+          pathHash: "hash-auth",
+          timestamp: `2026-07-09T10:00:1${i}.000Z`,
+          operation: "read",
+          success: true,
+          contentSizeBytes: 120,
+        });
+      }
+      // Sensitive path access (.env).
+      const envTc = "tc:claude-code:toolu_env_01";
+      await db.insert(schema.toolCalls).values({
+        id: envTc,
+        sessionId: SESSION_ID,
+        toolUseId: "toolu_env_01",
+        toolName: "Read",
+        startedAt: "2026-07-09T10:00:20.000Z",
+        endedAt: "2026-07-09T10:00:20.400Z",
+        durationMs: 400,
+        success: true,
+        failureType: "none",
+        permissionOutcome: "allowed",
+        inputSizeBytes: 10,
+        outputSizeBytes: 80,
+        sourceProvenance: "claude-code@0.1.0/parser@1",
+      });
+      await db.insert(schema.fileActivity).values({
+        id: `${envTc}:file`,
+        sessionId: SESSION_ID,
+        toolCallId: envTc,
+        redactedPath: "[REPO]/.env",
+        pathHash: "hash-env",
+        timestamp: "2026-07-09T10:00:20.000Z",
+        operation: "read",
+        success: true,
+        contentSizeBytes: 80,
+      });
+
+      const snapshot = await computeAnalytics(
+        database.db,
+        { period: "all" },
+        {
+          minimumRecommendationConfidence: 0.5,
+          now: new Date(NOW),
+          rules: defaultRules(),
+        },
+      );
+
+      // Both rules fired and produced persisted, ranked recommendations.
+      const ruleIds = snapshot.recommendations.map((r) => r.ruleId);
+      expect(ruleIds).toContain("TOOLS-001");
+      expect(ruleIds).toContain("SECURITY-001");
+      // Each recommendation has a stable persisted id and a remediation that is
+      // never auto-applied (§3.5 safe remediation).
+      for (const r of snapshot.recommendations) {
+        expect(r.id).toMatch(/^rec:/);
+        // No project filter → global scope (both ids undefined).
+        expect(r.sessionId).toBeUndefined();
+        expect(r.projectId).toBeUndefined();
+        expect(r.remediation?.automaticallyApplicable).toBe(false);
+        expect(r.evidence.length).toBeGreaterThan(0);
+      }
+
+      // A re-run with identical evidence is idempotent: no new inserts (dedup),
+      // the same recommendations come back (§15.1 determinism).
+      const before = snapshot.recommendations.length;
+      const again = await computeAnalytics(
+        database.db,
+        { period: "all" },
+        {
+          minimumRecommendationConfidence: 0.5,
+          now: new Date(NOW),
+          rules: defaultRules(),
+        },
+      );
+      expect(again.recommendations.length).toBe(before);
+      expect(again.recommendations.map((r) => r.ruleId).sort()).toEqual(
+        snapshot.recommendations.map((r) => r.ruleId).sort(),
+      );
     });
   });
 });

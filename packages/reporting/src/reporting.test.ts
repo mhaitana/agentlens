@@ -244,7 +244,7 @@ describe("reporting (§13.7)", () => {
       minimumRecommendationConfidence: 0.65,
     };
     expect(renderTerminal(empty)).toContain("AgentLens report");
-    expect(renderMarkdown(empty)).toContain("No recommendations yet");
+    expect(renderMarkdown(empty)).toContain("No recommendations for this window");
     expect(JSON.parse(renderJson(empty)).usage.totalTokens.value).toBe(0);
   });
 });

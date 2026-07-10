@@ -376,6 +376,484 @@ export function malformedAndUnknownLines(): string {
   ].join("\n");
 }
 
+// ---------------------------------------------------------------------------
+// §21.1 rule-evidence scenario builders (F003).
+// ---------------------------------------------------------------------------
+
+/** A helper to emit a Bash tool_use + failing tool_result pair. */
+function bashPair(args: {
+  sessionId: string;
+  parentUuid: string;
+  command: string;
+  fail?: boolean;
+  toolUseId: string;
+  assistantId: string;
+  resultId: string;
+  assistantMsgId?: string;
+  timestamp?: string;
+  resultTimestamp?: string;
+  cwd?: string;
+}): TranscriptLine[] {
+  return [
+    assistantLine({
+      messageId: args.assistantMsgId ?? `msg_${args.assistantId}`,
+      uuid: args.assistantId,
+      parentUuid: args.parentUuid,
+      sessionId: args.sessionId,
+      stopReason: "tool_use",
+      usage: { input_tokens: 1000, output_tokens: 20 },
+      content: [
+        { type: "tool_use", id: args.toolUseId, name: "Bash", input: { command: args.command } },
+      ],
+      timestamp: args.timestamp,
+    }),
+    toolResultLine({
+      toolUseId: args.toolUseId,
+      content: args.fail ? "Error: command failed" : "ok",
+      isError: args.fail ?? false,
+      uuid: args.resultId,
+      parentUuid: args.assistantId,
+      sessionId: args.sessionId,
+      timestamp: args.resultTimestamp ?? args.timestamp,
+    }),
+  ];
+}
+
+/**
+ * §21.1 repeated file reads: the same file read three times with no intervening
+ * edit (TOOLS-001 evidence).
+ */
+export function repeatedReadsSession(): BuiltSession {
+  const sessionId = "sess-repeated-reads-0001";
+  const lines: TranscriptLine[] = [summaryLine("leaf-rr", "Repeated reads")];
+  let parent = "leaf-rr";
+  for (let i = 1; i <= 3; i++) {
+    const aid = `a-rr-${i}`;
+    lines.push(
+      assistantLine({
+        messageId: `msg_rr_${i}`,
+        uuid: aid,
+        parentUuid: parent,
+        sessionId,
+        stopReason: "tool_use",
+        usage: { input_tokens: 1000, output_tokens: 20 },
+        content: [
+          {
+            type: "tool_use",
+            id: `toolu_read_rr_${i}`,
+            name: "Read",
+            input: { file_path: "/home/user/project-x/src/big.ts" },
+          },
+        ],
+      }),
+      toolResultLine({
+        toolUseId: `toolu_read_rr_${i}`,
+        content: `// contents ${i}`,
+        uuid: `u-rr-${i}`,
+        parentUuid: aid,
+        sessionId,
+      }),
+    );
+    parent = `u-rr-${i}`;
+  }
+  lines.push(
+    assistantLine({
+      messageId: "msg_rr_end",
+      uuid: "a-rr-end",
+      parentUuid: parent,
+      sessionId,
+      usage: { input_tokens: 1200, output_tokens: 10 },
+      content: [{ type: "text", text: "Done." }],
+    }),
+  );
+  return { jsonl: lines.map((l) => JSON.stringify(l)).join("\n"), sessionId };
+}
+
+/**
+ * §21.1 repeated command failures: the same failing command twice (TOOLS-003
+ * evidence). Uses `pnpm test` so it classifies as a test/verification failure.
+ */
+export function repeatedFailedCommandsSession(): BuiltSession {
+  const sessionId = "sess-repeated-fail-0001";
+  const lines: TranscriptLine[] = [
+    summaryLine("leaf-rf", "Repeated failures"),
+    promptLine({ content: "Fix and test", uuid: "u-rf-0", parentUuid: "leaf-rf", sessionId }),
+  ];
+  let parent = "u-rf-0";
+  for (let i = 1; i <= 2; i++) {
+    const pair = bashPair({
+      sessionId,
+      parentUuid: parent,
+      command: "cd /home/user/project-x && pnpm test",
+      fail: true,
+      toolUseId: `toolu_bash_rf_${i}`,
+      assistantId: `a-rf-${i}`,
+      resultId: `u-rf-${i}`,
+      timestamp: `2026-07-09T10:00:0${i}.000Z`,
+    });
+    lines.push(...pair);
+    parent = `u-rf-${i}`;
+  }
+  return { jsonl: lines.map((l) => JSON.stringify(l)).join("\n"), sessionId };
+}
+
+/**
+ * §21.1 broad tests run repeatedly: three `pnpm test --all` invocations
+ * (TOOLS-004 evidence — broad-scope test runs).
+ */
+export function broadTestsSession(): BuiltSession {
+  const sessionId = "sess-broad-tests-0001";
+  const lines: TranscriptLine[] = [
+    summaryLine("leaf-bt", "Broad tests"),
+    promptLine({ content: "Run the full suite", uuid: "u-bt-0", parentUuid: "leaf-bt", sessionId }),
+  ];
+  let parent = "u-bt-0";
+  for (let i = 1; i <= 3; i++) {
+    const pair = bashPair({
+      sessionId,
+      parentUuid: parent,
+      command: "cd /home/user/project-x && pnpm test --all",
+      fail: false,
+      toolUseId: `toolu_bash_bt_${i}`,
+      assistantId: `a-bt-${i}`,
+      resultId: `u-bt-${i}`,
+      timestamp: `2026-07-09T10:00:0${i}.000Z`,
+    });
+    lines.push(...pair);
+    parent = `u-bt-${i}`;
+  }
+  return { jsonl: lines.map((l) => JSON.stringify(l)).join("\n"), sessionId };
+}
+
+/**
+ * §21.1 code changes with no verification: an Edit with no following
+ * test/build/lint/typecheck (VERIFY-001 evidence).
+ */
+export function changesNoVerificationSession(): BuiltSession {
+  const sessionId = "sess-no-verify-0001";
+  const lines: TranscriptLine[] = [
+    summaryLine("leaf-nv", "No verification"),
+    promptLine({ content: "Add a feature", uuid: "u-nv-0", parentUuid: "leaf-nv", sessionId }),
+    assistantLine({
+      messageId: "msg_nv_edit",
+      uuid: "a-nv-edit",
+      parentUuid: "u-nv-0",
+      sessionId,
+      stopReason: "tool_use",
+      usage: { input_tokens: 1000, output_tokens: 30 },
+      content: [
+        {
+          type: "tool_use",
+          id: "toolu_edit_nv",
+          name: "Edit",
+          input: {
+            file_path: "/home/user/project-x/src/feat.ts",
+            old_string: "a",
+            new_string: "b",
+          },
+        },
+      ],
+    }),
+    toolResultLine({
+      toolUseId: "toolu_edit_nv",
+      content: "edited",
+      uuid: "u-nv-1",
+      parentUuid: "a-nv-edit",
+      sessionId,
+    }),
+    assistantLine({
+      messageId: "msg_nv_end",
+      uuid: "a-nv-end",
+      parentUuid: "u-nv-1",
+      sessionId,
+      usage: { input_tokens: 1100, output_tokens: 10 },
+      content: [{ type: "text", text: "Done." }],
+    }),
+  ];
+  return { jsonl: lines.map((l) => JSON.stringify(l)).join("\n"), sessionId };
+}
+
+/**
+ * §21.1 changes after final verification: a successful test, then an Edit after
+ * (VERIFY-002 evidence — writes after the last verification).
+ */
+export function changesAfterVerificationSession(): BuiltSession {
+  const sessionId = "sess-changes-after-verify-0001";
+  const lines: TranscriptLine[] = [
+    summaryLine("leaf-cv", "Changes after verify"),
+    promptLine({ content: "Fix and test", uuid: "u-cv-0", parentUuid: "leaf-cv", sessionId }),
+    // Test first (succeeds).
+    ...bashPair({
+      sessionId,
+      parentUuid: "u-cv-0",
+      command: "cd /home/user/project-x && pnpm test",
+      fail: false,
+      toolUseId: "toolu_bash_cv",
+      assistantId: "a-cv-test",
+      resultId: "u-cv-test",
+      timestamp: "2026-07-09T10:00:02.000Z",
+    }),
+    // Then an edit AFTER the verification.
+    assistantLine({
+      messageId: "msg_cv_edit",
+      uuid: "a-cv-edit",
+      parentUuid: "u-cv-test",
+      sessionId,
+      stopReason: "tool_use",
+      usage: { input_tokens: 1200, output_tokens: 30 },
+      content: [
+        {
+          type: "tool_use",
+          id: "toolu_edit_cv",
+          name: "Edit",
+          input: {
+            file_path: "/home/user/project-x/src/auth.ts",
+            old_string: "a",
+            new_string: "b",
+          },
+        },
+      ],
+      timestamp: "2026-07-09T10:00:05.000Z",
+    }),
+    toolResultLine({
+      toolUseId: "toolu_edit_cv",
+      content: "edited",
+      uuid: "u-cv-edit",
+      parentUuid: "a-cv-edit",
+      sessionId,
+      timestamp: "2026-07-09T10:00:05.500Z",
+    }),
+    assistantLine({
+      messageId: "msg_cv_end",
+      uuid: "a-cv-end",
+      parentUuid: "u-cv-edit",
+      sessionId,
+      usage: { input_tokens: 1300, output_tokens: 10 },
+      content: [{ type: "text", text: "Done." }],
+    }),
+  ];
+  return { jsonl: lines.map((l) => JSON.stringify(l)).join("\n"), sessionId };
+}
+
+/**
+ * §21.1 multiple compactions: two compaction events (CONTEXT-001 evidence).
+ */
+export function multipleCompactionsSession(): BuiltSession {
+  const sessionId = "sess-multi-compact-0001";
+  const lines: TranscriptLine[] = [
+    summaryLine("leaf-mc", "Multiple compactions"),
+    promptLine({ content: "Big task", uuid: "u-mc-0", parentUuid: "leaf-mc", sessionId }),
+    assistantLine({
+      messageId: "msg_mc_1",
+      uuid: "a-mc-1",
+      parentUuid: "u-mc-0",
+      sessionId,
+      stopReason: "tool_use",
+      usage: { input_tokens: 90000, output_tokens: 200 },
+      content: [
+        { type: "tool_use", id: "toolu_bash_mc", name: "Bash", input: { command: "echo working" } },
+      ],
+    }),
+    toolResultLine({
+      toolUseId: "toolu_bash_mc",
+      content: "working",
+      uuid: "u-mc-1",
+      parentUuid: "a-mc-1",
+      sessionId,
+    }),
+    compactionLine("sys-mc-1", "2026-07-09T10:05:00.000Z"),
+    assistantLine({
+      messageId: "msg_mc_2",
+      uuid: "a-mc-2",
+      parentUuid: "sys-mc-1",
+      sessionId,
+      stopReason: "tool_use",
+      usage: { input_tokens: 95000, output_tokens: 200 },
+      content: [
+        { type: "tool_use", id: "toolu_bash_mc2", name: "Bash", input: { command: "echo more" } },
+      ],
+    }),
+    toolResultLine({
+      toolUseId: "toolu_bash_mc2",
+      content: "more",
+      uuid: "u-mc-2",
+      parentUuid: "a-mc-2",
+      sessionId,
+    }),
+    compactionLine("sys-mc-2", "2026-07-09T10:10:00.000Z"),
+    assistantLine({
+      messageId: "msg_mc_end",
+      uuid: "a-mc-end",
+      parentUuid: "sys-mc-2",
+      sessionId,
+      usage: { input_tokens: 5000, output_tokens: 40 },
+      content: [{ type: "text", text: "Done." }],
+    }),
+  ];
+  return { jsonl: lines.map((l) => JSON.stringify(l)).join("\n"), sessionId };
+}
+
+/**
+ * §21.1 sensitive path access: reads of `.env` and a private key (SECURITY-001
+ * evidence). The paths themselves are non-secret; only the *contents* would be.
+ */
+export function sensitivePathSession(): BuiltSession {
+  const sessionId = "sess-sensitive-0001";
+  const lines: TranscriptLine[] = [
+    summaryLine("leaf-sp", "Sensitive path access"),
+    promptLine({ content: "Check the config", uuid: "u-sp-0", parentUuid: "leaf-sp", sessionId }),
+    assistantLine({
+      messageId: "msg_sp_env",
+      uuid: "a-sp-env",
+      parentUuid: "u-sp-0",
+      sessionId,
+      stopReason: "tool_use",
+      usage: { input_tokens: 1000, output_tokens: 20 },
+      content: [
+        {
+          type: "tool_use",
+          id: "toolu_read_env",
+          name: "Read",
+          input: { file_path: "/home/user/project-x/.env" },
+        },
+      ],
+    }),
+    toolResultLine({
+      toolUseId: "toolu_read_env",
+      content: "DATABASE_URL=postgres://example",
+      uuid: "u-sp-env",
+      parentUuid: "a-sp-env",
+      sessionId,
+    }),
+    assistantLine({
+      messageId: "msg_sp_key",
+      uuid: "a-sp-key",
+      parentUuid: "u-sp-env",
+      sessionId,
+      stopReason: "tool_use",
+      usage: { input_tokens: 1100, output_tokens: 20 },
+      content: [
+        {
+          type: "tool_use",
+          id: "toolu_read_key",
+          name: "Read",
+          input: { file_path: "/home/user/project-x/deploy.pem" },
+        },
+      ],
+    }),
+    toolResultLine({
+      toolUseId: "toolu_read_key",
+      content: "-----BEGIN PRIVATE KEY-----",
+      uuid: "u-sp-key",
+      parentUuid: "a-sp-key",
+      sessionId,
+    }),
+    assistantLine({
+      messageId: "msg_sp_end",
+      uuid: "a-sp-end",
+      parentUuid: "u-sp-key",
+      sessionId,
+      usage: { input_tokens: 1200, output_tokens: 10 },
+      content: [{ type: "text", text: "Done." }],
+    }),
+  ];
+  return { jsonl: lines.map((l) => JSON.stringify(l)).join("\n"), sessionId };
+}
+
+/**
+ * §21.1 prompt corrections: a failed test followed by a corrective user prompt
+ * (WORKFLOW-001 evidence — prompt after a failed verification).
+ */
+export function promptCorrectionsSession(): BuiltSession {
+  const sessionId = "sess-prompt-correction-0001";
+  const lines: TranscriptLine[] = [
+    summaryLine("leaf-pc", "Prompt corrections"),
+    promptLine({ content: "Fix the bug", uuid: "u-pc-0", parentUuid: "leaf-pc", sessionId }),
+    // Failing test.
+    ...bashPair({
+      sessionId,
+      parentUuid: "u-pc-0",
+      command: "cd /home/user/project-x && pnpm test",
+      fail: true,
+      toolUseId: "toolu_bash_pc",
+      assistantId: "a-pc-test",
+      resultId: "u-pc-test",
+      timestamp: "2026-07-09T10:00:02.000Z",
+    }),
+    // Corrective prompt after the failure.
+    promptLine({
+      content: "No, that's wrong — actually revert and try the other approach.",
+      uuid: "u-pc-1",
+      parentUuid: "a-pc-test",
+      sessionId,
+      timestamp: "2026-07-09T10:00:04.000Z",
+    }),
+    assistantLine({
+      messageId: "msg_pc_end",
+      uuid: "a-pc-end",
+      parentUuid: "u-pc-1",
+      sessionId,
+      usage: { input_tokens: 1200, output_tokens: 10 },
+      content: [{ type: "text", text: "Ok." }],
+    }),
+  ];
+  return { jsonl: lines.map((l) => JSON.stringify(l)).join("\n"), sessionId };
+}
+
+/**
+ * §21.1 multiple projects: two sessions in different working directories
+ * (cross-project aggregation evidence).
+ */
+export function multipleProjectsSessions(): BuiltSession[] {
+  const projectA = normalSession();
+  const projectB: BuiltSession = (() => {
+    const sessionId = "sess-other-project-0001";
+    const lines: TranscriptLine[] = [
+      summaryLine("leaf-op", "Other project"),
+      promptLine({
+        content: "Work in another repo",
+        uuid: "u-op-0",
+        parentUuid: "leaf-op",
+        sessionId,
+        cwd: "/home/user/project-y",
+      }),
+      assistantLine({
+        messageId: "msg_op_1",
+        uuid: "a-op-1",
+        parentUuid: "u-op-0",
+        sessionId,
+        stopReason: "tool_use",
+        usage: { input_tokens: 900, output_tokens: 30 },
+        content: [
+          {
+            type: "tool_use",
+            id: "toolu_bash_op",
+            name: "Bash",
+            input: { command: "cd /home/user/project-y && pnpm test" },
+          },
+        ],
+      }),
+      toolResultLine({
+        toolUseId: "toolu_bash_op",
+        content: "1 passed",
+        uuid: "u-op-1",
+        parentUuid: "a-op-1",
+        sessionId,
+      }),
+      assistantLine({
+        messageId: "msg_op_end",
+        uuid: "a-op-end",
+        parentUuid: "u-op-1",
+        sessionId,
+        usage: { input_tokens: 1000, output_tokens: 10 },
+        content: [{ type: "text", text: "Done." }],
+      }),
+    ];
+    return { jsonl: lines.map((l) => JSON.stringify(l)).join("\n"), sessionId };
+  })();
+  return [projectA, projectB];
+}
+
 /** A JSONL string with a final line that has no trailing newline (partial tail). */
 export function noTrailingNewline(lines: string): string {
   return lines;

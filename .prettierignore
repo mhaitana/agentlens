@@ -5,3 +5,6 @@ coverage
 **/*.lock
 pnpm-lock.yaml
 apps/dashboard/dist
+# Hand-maintained state files: the EPCC workflow appends to this log, so
+# reformatting it is counterproductive (and it is not source code).
+epcc-progress.md

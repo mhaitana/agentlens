@@ -79,7 +79,9 @@ export function renderMarkdown(snapshot: AnalyticsSnapshot): string {
   out.push(`## Most important findings`);
   out.push("");
   if (snapshot.recommendations.length === 0) {
-    out.push(`_No recommendations yet. The rule engine ships rules in M2._`);
+    out.push(
+      `_No recommendations for this window. No rules produced evidence above the configured confidence floor._`,
+    );
   } else {
     for (const r of snapshot.recommendations.slice(0, 5)) out.push(`- ${recommendationLine(r)}`);
   }

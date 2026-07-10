@@ -91,7 +91,11 @@ export function renderTerminal(snapshot: AnalyticsSnapshot): string {
   // --- Most important findings / Top recommendations ----------------------
   out.push(h("Most important findings"));
   if (snapshot.recommendations.length === 0) {
-    out.push(pc.dim("  No recommendations yet. The rule engine ships rules in M2."));
+    out.push(
+      pc.dim(
+        "  No recommendations for this window. No rules produced evidence above the confidence floor.",
+      ),
+    );
   } else {
     for (const r of snapshot.recommendations.slice(0, 5)) out.push(`  ${recommendationLine(r)}`);
   }

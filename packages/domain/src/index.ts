@@ -81,6 +81,9 @@ export type {
   CompletenessSummary,
   CompletionSummary,
   ScanProvenanceSummary,
+  SensitivePathFinding,
+  RedactedSecretFinding,
+  SecurityMetrics,
   AnalyticsSnapshot,
 } from "./metrics.js";
 

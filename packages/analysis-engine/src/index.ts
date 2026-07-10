@@ -36,3 +36,22 @@ export {
   type RuleOverride,
   type RuleOverrides,
 } from "./rule-engine.js";
+export { defaultRules, RULE_METADATA, type RuleMetadata } from "./rules/index.js";
+export {
+  tools001,
+  tools002,
+  tools003,
+  tools004,
+  tools005,
+  tools006,
+  verify001,
+  verify002,
+  verify003,
+  verify004,
+  workflow001,
+  workflow002,
+  context001,
+  context002,
+  security001,
+  security002,
+} from "./rules/index.js";

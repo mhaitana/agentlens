@@ -16,11 +16,11 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm, readFile } from "node:fs/promises";
+import { mkdtemp, rm, readFile, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir, homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { claudeCodeFixturesDir } from "@agentlens/test-fixtures";
+import { claudeCodeFixturesDir, repeatedReadsSession } from "@agentlens/test-fixtures";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Built CLI binary (repo-root-relative). */
@@ -198,5 +198,75 @@ describe("M1-11 CLI smoke (spec §25, §26)", () => {
     expect(r.stdout).toContain("agentlens");
     expect(r.stdout).toContain("scan");
     expect(r.stdout).toContain("report");
+  });
+});
+
+describe("F003 rules smoke (spec §13.10, §26)", () => {
+  let ruleHome: string;
+  let ruleFixturesDir: string;
+
+  beforeAll(async () => {
+    ruleHome = await mkdtemp(join(tmpdir(), "agentlens-rules-"));
+    // Write a synthetic repeated-reads transcript into a temp project dir so the
+    // rule-triggering fixture is fully isolated from the M1-11 on-disk fixtures.
+    ruleFixturesDir = await mkdtemp(join(tmpdir(), "agentlens-rules-fixtures-"));
+    const projectDir = join(ruleFixturesDir, "-home-user-project-x");
+    await mkdir(projectDir, { recursive: true });
+    const { jsonl } = repeatedReadsSession();
+    await writeFile(join(projectDir, "session-0001.jsonl"), jsonl + "\n", "utf8");
+    // init the isolated home.
+    const init = runAgentlens(ruleHome, ["init"]);
+    expect(init.status).toBe(0);
+  });
+
+  afterAll(async () => {
+    await Promise.all([
+      rm(ruleHome, { recursive: true, force: true }).catch(() => undefined),
+      rm(ruleFixturesDir, { recursive: true, force: true }).catch(() => undefined),
+    ]);
+  });
+
+  it("scan imports the repeated-reads fixture", () => {
+    const r = runAgentlens(ruleHome, ["scan", "--path", ruleFixturesDir]);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("Scan complete");
+  });
+
+  it("report surfaces a TOOLS-001 recommendation through the full pipeline", () => {
+    const r = runAgentlens(ruleHome, ["report", "--period", "month", "--format", "json"]);
+    expect(r.status).toBe(0);
+    const parsed = JSON.parse(r.stdout) as {
+      recommendations: Array<{ ruleId: string; id: string }>;
+    };
+    expect(Array.isArray(parsed.recommendations)).toBe(true);
+    const ids = parsed.recommendations.map((rec) => rec.ruleId);
+    expect(ids).toContain("TOOLS-001");
+    for (const rec of parsed.recommendations) {
+      expect(rec.id).toMatch(/^rec:/);
+    }
+  });
+
+  it("rules list enumerates all 16 rules", () => {
+    const r = runAgentlens(ruleHome, ["rules", "list", "--json"]);
+    expect(r.status).toBe(0);
+    const list = JSON.parse(r.stdout) as Array<{ id: string; enabled: boolean }>;
+    expect(list).toHaveLength(16);
+    expect(list[0]?.id).toBe("TOOLS-001");
+    expect(list.every((entry) => entry.enabled)).toBe(true);
+  });
+
+  it("rules disable + enable round-trips through config", () => {
+    const off = runAgentlens(ruleHome, ["rules", "disable", "TOOLS-001"]);
+    expect(off.status).toBe(0);
+    const list = runAgentlens(ruleHome, ["rules", "list", "--json"]);
+    const parsed = JSON.parse(list.stdout) as Array<{ id: string; enabled: boolean }>;
+    expect(parsed.find((m) => m.id === "TOOLS-001")?.enabled).toBe(false);
+    // Disabling TOOLS-001 removes it from the next report.
+    const rep = runAgentlens(ruleHome, ["report", "--period", "month", "--format", "json"]);
+    const rj = JSON.parse(rep.stdout) as { recommendations: Array<{ ruleId: string }> };
+    expect(rj.recommendations.map((r2) => r2.ruleId)).not.toContain("TOOLS-001");
+    // Re-enable restores it.
+    const on = runAgentlens(ruleHome, ["rules", "enable", "TOOLS-001"]);
+    expect(on.status).toBe(0);
   });
 });
