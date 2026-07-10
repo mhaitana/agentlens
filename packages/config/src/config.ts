@@ -66,6 +66,7 @@ function mergeWithDefaults(obj: Record<string, unknown>): Config {
       ...base.externalAnalysis,
       ...((obj.externalAnalysis as object) ?? {}),
     },
+    telemetry: { ...base.telemetry, ...((obj.telemetry as object) ?? {}) },
     version: CURRENT_CONFIG_VERSION,
   } as Config;
 }

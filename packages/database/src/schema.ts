@@ -278,6 +278,81 @@ export const recommendations = sqliteTable(
   ],
 );
 
+/**
+ * Live hook events captured from Claude Code (spec §14.2/§14.3). Payloads are
+ * redacted before persistence (§8.4). Correlation to a scanned session is
+ * inferred (§14.4): `correlatedSessionId` is a soft reference (no FK) because a
+ * hook event frequently arrives before the transcript is scanned into a session
+ * row, and may never match one.
+ */
+export const hookEvents = sqliteTable(
+  "hook_events",
+  {
+    id: text("id").primaryKey(),
+    /** Source-native session id from the hook payload (Claude `session_id`). */
+    sourceSessionId: text("source_session_id"),
+    /** Hook event name, e.g. "PreToolUse", "Stop" (§14.2). */
+    hookEventName: text("hook_event_name").notNull(),
+    /** When the hook fired (parsed from payload or received time). */
+    timestamp: text("timestamp").notNull(),
+    /** Redacted cwd path hash (the raw cwd is never persisted). */
+    cwdHash: text("cwd_hash"),
+    toolName: text("tool_name"),
+    /** Redacted payload JSON (secrets/paths stripped, §8.4). */
+    payload: text("payload", { mode: "json" }).notNull(),
+    /** Stable hash of the redacted payload (correlation / dedup). */
+    payloadHash: text("payload_hash").notNull(),
+    /** How the event reached AgentLens: "online" (loopback POST) or "spool". */
+    delivery: text("delivery").notNull(),
+    receivedAt: text("received_at").notNull(),
+    /** Soft correlation to a scanned session (§14.4). */
+    correlatedSessionId: text("correlated_session_id"),
+    /** 0–1 confidence in the correlation (1 = exact id match). */
+    correlationConfidence: real("correlation_confidence"),
+    /** Where this event came from ("claude-code-hook"). */
+    provenance: text("provenance").notNull(),
+  },
+  (t) => [
+    index("hook_events_source_session_idx").on(t.sourceSessionId),
+    index("hook_events_name_idx").on(t.hookEventName),
+    index("hook_events_received_idx").on(t.receivedAt),
+    index("hook_events_correlated_idx").on(t.correlatedSessionId),
+  ],
+);
+
+/**
+ * Normalised OpenTelemetry events ingested from Claude Code telemetry
+ * (spec §14.6/§14.8). OTLP/JSON is parsed into one row per metric/log/trace
+ * record; payloads redacted before persistence. Correlation is inferred.
+ */
+export const otelEvents = sqliteTable(
+  "otel_events",
+  {
+    id: text("id").primaryKey(),
+    /** "metric" | "log" | "trace". */
+    kind: text("kind").notNull(),
+    /** Source-native session id when attributable from resource attributes. */
+    sourceSessionId: text("source_session_id"),
+    /** Metric/log/trace name (e.g. "claude_code.token.usage"). */
+    name: text("name"),
+    /** When the event occurred (from the OTLP time field, or received). */
+    timestamp: text("timestamp").notNull(),
+    /** Redacted normalised payload (§8.4). */
+    payload: text("payload", { mode: "json" }).notNull(),
+    payloadHash: text("payload_hash").notNull(),
+    receivedAt: text("received_at").notNull(),
+    correlatedSessionId: text("correlated_session_id"),
+    correlationConfidence: real("correlation_confidence"),
+    provenance: text("provenance").notNull(),
+  },
+  (t) => [
+    index("otel_events_kind_idx").on(t.kind),
+    index("otel_events_received_idx").on(t.receivedAt),
+    index("otel_events_source_session_idx").on(t.sourceSessionId),
+    index("otel_events_correlated_idx").on(t.correlatedSessionId),
+  ],
+);
+
 /** Incremental-import bookkeeping (spec §13.3). */
 export const scanState = sqliteTable(
   "scan_state",

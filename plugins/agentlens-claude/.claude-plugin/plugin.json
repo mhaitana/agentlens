@@ -1,0 +1,11 @@
+{
+  "name": "agentlens-claude",
+  "description": "Observation-only local analytics hooks for AgentLens. Captures Claude Code hook events to your local AgentLens instance without approving, denying, modifying, or blocking any tool call or prompt.",
+  "version": "1.0.0",
+  "author": {
+    "name": "AgentLens"
+  },
+  "homepage": "https://github.com/agentlens/agentlens",
+  "license": "MIT",
+  "keywords": ["analytics", "observability", "claude-code", "local-first"]
+}

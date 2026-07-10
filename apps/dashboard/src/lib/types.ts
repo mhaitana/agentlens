@@ -176,3 +176,21 @@ export interface SettingsResponse {
     openBrowser: boolean;
   };
 }
+
+/** GET /api/v1/live — live collector status snapshot (spec §14.10). */
+export interface LiveStatus {
+  status: string;
+  streaming: boolean;
+  collector: { running: boolean; port?: number };
+  otel: { running: boolean; port?: number; events: number };
+  hooks: { events: number };
+  spool: { backlog: number };
+  time: string;
+}
+
+/** A single event delivered over the /api/v1/live/stream SSE channel. */
+export interface LiveEvent {
+  type: "hook" | "otel" | "status" | "heartbeat";
+  time: string;
+  data: Record<string, unknown>;
+}

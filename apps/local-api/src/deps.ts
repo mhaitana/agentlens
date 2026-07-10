@@ -8,6 +8,7 @@
  */
 import type { DrizzleDb } from "@agentlens/database";
 import type { AgentLensConfig } from "@agentlens/config";
+import type { LiveBus } from "./live.js";
 
 /** Lifecycle handles the API closes on shutdown. */
 export interface ServerDeps {
@@ -34,6 +35,14 @@ export interface ServerDeps {
   port: number;
   /** Optional override of the generated timestamp (tests). */
   now?: Date;
+  /**
+   * Live-update bus (Phase 2, §14.10). When present the server registers the
+   * hook ingest routes, broadcasts ingests to SSE clients, and serves
+   * `/api/v1/live/stream`. Absent in plain dashboard mode (no live collection).
+   */
+  liveBus?: LiveBus;
+  /** Bound OTLP receiver port (Phase 2). Surfaced in `/api/v1/live` status. */
+  otelPort?: number;
 }
 
 /** Stable, versioned error shape (§17). */

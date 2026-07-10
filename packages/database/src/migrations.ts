@@ -240,6 +240,48 @@ CREATE TABLE IF NOT EXISTS scan_state (
 CREATE INDEX IF NOT EXISTS scan_state_uri_idx ON scan_state(uri);
 `,
   },
+  {
+    version: 2,
+    sql: `
+CREATE TABLE IF NOT EXISTS hook_events (
+  id TEXT PRIMARY KEY,
+  source_session_id TEXT,
+  hook_event_name TEXT NOT NULL,
+  timestamp TEXT NOT NULL,
+  cwd_hash TEXT,
+  tool_name TEXT,
+  payload TEXT NOT NULL,
+  payload_hash TEXT NOT NULL,
+  delivery TEXT NOT NULL,
+  received_at TEXT NOT NULL,
+  correlated_session_id TEXT,
+  correlation_confidence REAL,
+  provenance TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS hook_events_source_session_idx ON hook_events(source_session_id);
+CREATE INDEX IF NOT EXISTS hook_events_name_idx ON hook_events(hook_event_name);
+CREATE INDEX IF NOT EXISTS hook_events_received_idx ON hook_events(received_at);
+CREATE INDEX IF NOT EXISTS hook_events_correlated_idx ON hook_events(correlated_session_id);
+
+CREATE TABLE IF NOT EXISTS otel_events (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  source_session_id TEXT,
+  name TEXT,
+  timestamp TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  payload_hash TEXT NOT NULL,
+  received_at TEXT NOT NULL,
+  correlated_session_id TEXT,
+  correlation_confidence REAL,
+  provenance TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS otel_events_kind_idx ON otel_events(kind);
+CREATE INDEX IF NOT EXISTS otel_events_received_idx ON otel_events(received_at);
+CREATE INDEX IF NOT EXISTS otel_events_source_session_idx ON otel_events(source_session_id);
+CREATE INDEX IF NOT EXISTS otel_events_correlated_idx ON otel_events(correlated_session_id);
+`,
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

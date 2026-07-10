@@ -11,7 +11,14 @@
 import { useEffect, useSyncExternalStore } from "react";
 
 export type RouteName =
-  "overview" | "sessions" | "session" | "projects" | "recommendations" | "privacy" | "onboarding";
+  | "overview"
+  | "sessions"
+  | "session"
+  | "projects"
+  | "recommendations"
+  | "privacy"
+  | "onboarding"
+  | "live";
 
 export interface ParsedRoute {
   name: RouteName;

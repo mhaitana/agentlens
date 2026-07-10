@@ -35,4 +35,5 @@ export const qk = {
   rules: ["rules"] as const,
   privacy: ["privacy"] as const,
   settings: ["settings"] as const,
+  live: ["live"] as const,
 };

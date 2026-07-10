@@ -30,6 +30,7 @@ import {
   removeRuntimeRecord,
   writeRuntimeRecord,
 } from "./dashboard-runtime.js";
+import { startObservation } from "./observe-runtime.js";
 
 const DEFAULT_PORT = 7531;
 
@@ -39,7 +40,7 @@ const DEFAULT_PORT = 7531;
  * CLI module (repo-layout). Returns null if no bundle is present so the
  * command can fall back to API-only mode with a clear message.
  */
-function resolveDashboardDir(): string | null {
+export function resolveDashboardDir(): string | null {
   const override = process.env.AGENTLENS_DASHBOARD_DIR;
   if (override && existsSync(override)) return override;
   // This file ships at apps/cli/dist/commands/dashboard.js; the dashboard
@@ -50,7 +51,7 @@ function resolveDashboardDir(): string | null {
 }
 
 /** Open a URL in the user's default browser (cross-platform, best-effort). */
-function openBrowser(url: string): void {
+export function openBrowser(url: string): void {
   const cmd =
     process.platform === "darwin"
       ? ["open", url]
@@ -71,7 +72,11 @@ export function makeDashboardCommand(): Command {
     .option("-p, --port <port>", "Preferred loopback port.", String(DEFAULT_PORT))
     .option("--no-open", "Do not open the browser automatically.")
     .option("--api-only", "Start the API without serving the dashboard bundle.")
-    .action(async (opts: { port: string; open: boolean; apiOnly: boolean }) => {
+    .option(
+      "--observe",
+      "Also start live collectors (hook ingestion + OTLP + spool). Opt-in (privacy-first, §3).",
+    )
+    .action(async (opts: { port: string; open: boolean; apiOnly: boolean; observe: boolean }) => {
       const home = resolveHome();
       const preferredPort = Number.parseInt(opts.port, 10) || DEFAULT_PORT;
 
@@ -90,9 +95,63 @@ export function makeDashboardCommand(): Command {
 
       // --- start a new instance ---
       const db = await openAgentLensDb(home);
+      const config = await loadConfig(home);
+      const dashboardDir = opts.apiOnly ? undefined : resolveDashboardDir();
+
+      // `--observe` starts the live collectors alongside the dashboard (§14.9).
+      // Opt-in: observation requires an explicit action (privacy-first, §3).
+      if (opts.observe) {
+        const handle = await startObservation({
+          home,
+          db,
+          config,
+          apiPort: preferredPort,
+          dashboardDir: dashboardDir ?? undefined,
+        });
+        const url = `http://127.0.0.1:${handle.apiPort}/`;
+        await writeRuntimeRecord(home, {
+          port: handle.apiPort,
+          token: handle.token,
+          pid: process.pid,
+          startedAt: new Date().toISOString(),
+          otelPort: handle.otelPort,
+        });
+        process.stdout.write(pc.bold(pc.cyan("AgentLens dashboard (observing)\n")));
+        process.stdout.write(`  ${pc.green("URL:")}    ${pc.underline(url)}\n`);
+        process.stdout.write(`  ${pc.green("OTLP:")}   http://127.0.0.1:${handle.otelPort}\n`);
+        process.stdout.write(`  ${pc.gray("home:")}   ${home}\n`);
+        if (handle.stats.spoolDrained > 0)
+          process.stdout.write(
+            pc.green(`  Recovered ${handle.stats.spoolDrained} spooled event(s).\n`),
+          );
+        process.stdout.write(pc.gray("  Press Ctrl+C to stop.\n"));
+        if (opts.open) openBrowser(url);
+
+        let shuttingDown = false;
+        const shutdown = async (signal: string) => {
+          if (shuttingDown) return;
+          shuttingDown = true;
+          process.stdout.write(pc.gray(`\n  ${signal} received, shutting down…\n`));
+          try {
+            await handle.stop();
+          } catch {
+            // ignore
+          }
+          try {
+            closeDatabase(db);
+          } catch {
+            // ignore
+          }
+          await removeRuntimeRecord(home);
+          process.exit(0);
+        };
+        process.on("SIGINT", () => void shutdown("SIGINT"));
+        process.on("SIGTERM", () => void shutdown("SIGTERM"));
+        return;
+      }
+
       const port = await pickFreePort(preferredPort);
       const token = generateRuntimeToken();
-      const dashboardDir = opts.apiOnly ? undefined : resolveDashboardDir();
 
       if (!opts.apiOnly && !dashboardDir) {
         process.stdout.write(
@@ -106,7 +165,7 @@ export function makeDashboardCommand(): Command {
 
       const server = await buildServer({
         db: db.db,
-        config: await loadConfig(home),
+        config,
         home,
         runtimeToken: token,
         dashboardDir: dashboardDir ?? undefined,

@@ -1,0 +1,16 @@
+{
+  "name": "@agentlens/plugin-claude",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Observation-only Claude Code plugin that feeds hook events to local AgentLens.",
+  "type": "commonjs",
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint scripts"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "vitest": "^2.1.8",
+    "@types/node": "^22.10.0"
+  }
+}

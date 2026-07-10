@@ -27,6 +27,8 @@ export interface RuntimeRecord {
   pid: number;
   /** ISO timestamp the server was started. */
   startedAt: string;
+  /** Loopback port the OTLP receiver bound (Phase 2; absent when not running). */
+  otelPort?: number;
 }
 
 /** Path of the runtime record file under the AgentLens data home. */
@@ -52,6 +54,7 @@ export async function readRuntimeRecord(home: string): Promise<RuntimeRecord | n
         token: parsed.token,
         pid: parsed.pid,
         startedAt: parsed.startedAt,
+        otelPort: typeof parsed.otelPort === "number" ? parsed.otelPort : undefined,
       };
     }
     return null;

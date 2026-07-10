@@ -17,6 +17,9 @@ import { makeRulesCommand } from "./commands/rules.js";
 import { makeStatusCommand } from "./commands/status.js";
 import { makeVersionCommand } from "./commands/version.js";
 import { makeDashboardCommand } from "./commands/dashboard.js";
+import { makeObserveCommand } from "./commands/observe.js";
+import { makeIntegrateCommand } from "./commands/integrate.js";
+import { makeTelemetryCommand } from "./commands/telemetry.js";
 
 const program = new Command();
 
@@ -33,6 +36,9 @@ program.addCommand(makePrivacyCommand());
 program.addCommand(makeRulesCommand());
 program.addCommand(makeStatusCommand());
 program.addCommand(makeDashboardCommand());
+program.addCommand(makeObserveCommand());
+program.addCommand(makeIntegrateCommand());
+program.addCommand(makeTelemetryCommand());
 program.addCommand(makeVersionCommand());
 
 program.parseAsync(process.argv).catch((err: unknown) => {

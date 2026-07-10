@@ -12,6 +12,7 @@ import type {
   AnalyticsSnapshot,
   OnboardingResponse,
   PageEnvelope,
+  LiveStatus,
   PrivacyInfo,
   ProjectItem,
   RecommendationRow,
@@ -200,5 +201,17 @@ export function useExportData() {
         projects: unknown;
         recommendations: unknown;
       }>("/privacy/export"),
+  });
+}
+
+/** GET /api/v1/live — live collector status snapshot (spec §14.10). Refreshed
+ * frequently so the Live view reflects collector health even without SSE. */
+export function useLive() {
+  return useQuery<LiveStatus>({
+    queryKey: qk.live,
+    queryFn: () => api.get<LiveStatus>("/live"),
+    // Live status is volatile; poll on top of the SSE stream.
+    staleTime: 2_000,
+    refetchInterval: 5_000,
   });
 }

@@ -64,6 +64,33 @@ export const ExternalAnalysisConfig = z
   })
   .passthrough();
 
+/**
+ * Claude Code OpenTelemetry configuration (spec §14.7). AgentLens holds this
+ * locally; `telemetry print-env` emits the corresponding `OTEL_*` /
+ * `CLAUDE_CODE_*` env vars pointing at the local loopback OTLP receiver.
+ *
+ * Privacy defaults (§14.7, §14.11): every sensitive-content flag is OFF by
+ * default — user prompts, assistant responses, tool details, tool content, and
+ * raw API bodies are never logged unless explicitly enabled. Traces are a beta
+ * feature and disabled unless explicitly enabled.
+ */
+export const TelemetryConfig = z
+  .object({
+    enabled: z.boolean().default(false),
+    /** Loopback port the local OTLP/HTTP receiver binds (default 4318). */
+    otlpPort: z.number().int().min(0).max(65535).default(4318),
+    protocol: z.enum(["http/json", "http/protobuf", "grpc"]).default("http/json"),
+    /** OTLP endpoint base URL (SDK appends /v1/{metrics,logs,traces}). */
+    endpoint: z.string().default("http://127.0.0.1:4318"),
+    logUserPrompts: z.boolean().default(false),
+    logAssistantResponses: z.boolean().default(false),
+    logToolDetails: z.boolean().default(false),
+    logToolContent: z.boolean().default(false),
+    logRawApiBodies: z.boolean().default(false),
+    tracesEnabled: z.boolean().default(false),
+  })
+  .passthrough();
+
 /** Current config schema version (spec §9 example uses version 1). */
 export const CURRENT_CONFIG_VERSION = 1;
 
@@ -75,6 +102,7 @@ export const AgentLensConfig = z
     analysis: AnalysisConfig,
     dashboard: DashboardConfig,
     externalAnalysis: ExternalAnalysisConfig,
+    telemetry: TelemetryConfig,
   })
   .passthrough();
 
@@ -84,6 +112,7 @@ export type SourcesConfig = z.infer<typeof SourcesConfig>;
 export type AnalysisConfig = z.infer<typeof AnalysisConfig>;
 export type DashboardConfig = z.infer<typeof DashboardConfig>;
 export type ExternalAnalysisConfig = z.infer<typeof ExternalAnalysisConfig>;
+export type TelemetryConfig = z.infer<typeof TelemetryConfig>;
 export type CustomPattern = z.infer<typeof CustomPattern>;
 export type ClaudeCodeSourceConfig = z.infer<typeof ClaudeCodeSourceConfig>;
 
@@ -120,6 +149,18 @@ export function defaultConfig(): AgentLensConfig {
       enabled: false,
       provider: "none",
       model: null,
+    },
+    telemetry: {
+      enabled: false,
+      otlpPort: 4318,
+      protocol: "http/json",
+      endpoint: "http://127.0.0.1:4318",
+      logUserPrompts: false,
+      logAssistantResponses: false,
+      logToolDetails: false,
+      logToolContent: false,
+      logRawApiBodies: false,
+      tracesEnabled: false,
     },
   };
 }

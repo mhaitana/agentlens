@@ -13,6 +13,7 @@ export {
   AnalysisConfig,
   DashboardConfig,
   ExternalAnalysisConfig,
+  TelemetryConfig,
   CustomPattern,
 } from "./schema.js";
 

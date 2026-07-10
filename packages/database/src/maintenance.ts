@@ -29,6 +29,12 @@ const SESSION_CHILDREN = [
 ] as const;
 
 /**
+ * Live event tables with a soft `correlatedSessionId` (no FK). Purged fully on
+ * a global purge and pruned by their own timestamp under retention (§8, §14).
+ */
+const LIVE_EVENT_TABLES = [schema.hookEvents, schema.otelEvents] as const;
+
+/**
  * Compute the ISO cutoff timestamp for a retention window: anything older than
  * `now - retentionDays` is expired. Exposed for tests + the CLI report.
  */
@@ -51,7 +57,13 @@ async function rowCount(db: DrizzleDb, t: Parameters<DrizzleDb["delete"]>[0]): P
  * state), keeping config + schema. Returns a summary of deleted row counts.
  */
 export async function purgeAllData(db: DrizzleDb): Promise<PurgeSummary> {
-  const summary: PurgeSummary = { sessions: 0, events: 0, projects: 0, recommendations: 0 };
+  const summary: PurgeSummary = {
+    sessions: 0,
+    events: 0,
+    projects: 0,
+    recommendations: 0,
+    liveEvents: 0,
+  };
   // Count before delete (the libsql ResultSet does not expose changes portably).
   summary.sessions = await rowCount(db, schema.sessions);
   summary.projects = await rowCount(db, schema.projects);
@@ -59,8 +71,14 @@ export async function purgeAllData(db: DrizzleDb): Promise<PurgeSummary> {
   for (const t of SESSION_CHILDREN) {
     summary.events += await rowCount(db, t);
   }
-  // Children first (FK NO ACTION), then sessions/projects/scanState.
+  for (const t of LIVE_EVENT_TABLES) {
+    summary.liveEvents += await rowCount(db, t);
+  }
+  // Children first (FK NO ACTION), then live events, then sessions/projects/scanState.
   for (const t of SESSION_CHILDREN) {
+    await db.delete(t);
+  }
+  for (const t of LIVE_EVENT_TABLES) {
     await db.delete(t);
   }
   await db.delete(schema.recommendations);
@@ -76,7 +94,13 @@ export async function purgeAllData(db: DrizzleDb): Promise<PurgeSummary> {
  * any of its sessions. Returns a summary.
  */
 export async function purgeProjectData(db: DrizzleDb, projectId: string): Promise<PurgeSummary> {
-  const summary: PurgeSummary = { sessions: 0, events: 0, projects: 0, recommendations: 0 };
+  const summary: PurgeSummary = {
+    sessions: 0,
+    events: 0,
+    projects: 0,
+    recommendations: 0,
+    liveEvents: 0,
+  };
   const sessions = await db
     .select({ id: schema.sessions.id })
     .from(schema.sessions)
@@ -96,6 +120,10 @@ export async function purgeProjectData(db: DrizzleDb, projectId: string): Promis
   }
   for (const t of SESSION_CHILDREN) {
     await db.delete(t).where(inArray(t.sessionId, ids));
+  }
+  // Live events (soft correlation): drop any hook/otel events linked to these sessions.
+  for (const t of LIVE_EVENT_TABLES) {
+    await db.delete(t).where(inArray(t.correlatedSessionId, ids));
   }
   await db.delete(schema.recommendations).where(inArray(schema.recommendations.sessionId, ids));
   await db.delete(schema.sessions).where(eq(schema.sessions.projectId, projectId));
@@ -135,6 +163,12 @@ export async function pruneExpiredSessions(
   for (const t of SESSION_CHILDREN) {
     await db.delete(t).where(inArray(t.sessionId, ids));
   }
+  // Live events: drop any whose soft-correlated session is expiring, plus any
+  // live event whose own timestamp is older than the cutoff (orphans).
+  for (const t of LIVE_EVENT_TABLES) {
+    await db.delete(t).where(inArray(t.correlatedSessionId, ids));
+    await db.delete(t).where(lt(t.timestamp, cutoff));
+  }
   await db.delete(schema.recommendations).where(inArray(schema.recommendations.sessionId, ids));
   await db.delete(schema.sessions).where(inArray(schema.sessions.id, ids));
   return ids.length;
@@ -145,4 +179,6 @@ export interface PurgeSummary {
   events: number;
   projects: number;
   recommendations: number;
+  /** Hook + OTLP live event rows removed (spec §14). */
+  liveEvents: number;
 }

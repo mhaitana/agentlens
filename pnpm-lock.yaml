@@ -59,9 +59,15 @@ importers:
       '@agentlens/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@agentlens/hook-collector':
+        specifier: workspace:*
+        version: link:../../packages/hook-collector
       '@agentlens/local-api':
         specifier: workspace:*
         version: link:../local-api
+      '@agentlens/otel-receiver':
+        specifier: workspace:*
+        version: link:../../packages/otel-receiver
       '@agentlens/recommendations':
         specifier: workspace:*
         version: link:../../packages/recommendations
@@ -354,6 +360,12 @@ importers:
 
   packages/hook-collector:
     dependencies:
+      '@agentlens/config':
+        specifier: workspace:*
+        version: link:../config
+      '@agentlens/database':
+        specifier: workspace:*
+        version: link:../database
       '@agentlens/domain':
         specifier: workspace:*
         version: link:../domain
@@ -363,6 +375,12 @@ importers:
       '@agentlens/shared':
         specifier: workspace:*
         version: link:../shared
+      fastify:
+        specifier: ^5.2.0
+        version: 5.10.0
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
@@ -379,6 +397,9 @@ importers:
 
   packages/otel-receiver:
     dependencies:
+      '@agentlens/config':
+        specifier: workspace:*
+        version: link:../config
       '@agentlens/database':
         specifier: workspace:*
         version: link:../database
@@ -391,6 +412,12 @@ importers:
       '@agentlens/shared':
         specifier: workspace:*
         version: link:../shared
+      fastify:
+        specifier: ^5.2.0
+        version: 5.10.0
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
@@ -551,6 +578,15 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+
+  plugins/agentlens-claude:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(jsdom@29.1.1)(lightningcss@1.32.0)
 
 packages:
 

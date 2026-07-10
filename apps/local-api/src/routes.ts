@@ -23,6 +23,13 @@ import {
 } from "./queries.js";
 import { gatePrompt, gateToolCall, gateCommandRun, gateFileActivity } from "./privacy.js";
 import {
+  type LiveBus,
+  buildLiveStatus,
+  hookLiveEvent,
+  statusLiveEvent,
+  heartbeatLiveEvent,
+} from "./live.js";
+import {
   computeAnalytics,
   defaultRules,
   RULE_METADATA,
@@ -41,6 +48,7 @@ import {
 import { redactPath } from "@agentlens/redaction";
 import { databasePath, configPath } from "@agentlens/config";
 import { getConfigValue, setConfigValue, saveConfig } from "@agentlens/config";
+import { registerHookIngestRoutes } from "@agentlens/hook-collector";
 
 const PERIODS = ["day", "week", "month", "all"] as const;
 
@@ -86,6 +94,18 @@ export function registerRoutes(app: FastifyInstance, deps: ServerDeps): void {
   // values on subsequent requests without a server restart.
   let config = deps.config;
   let mode = config.privacy.mode;
+
+  // --- hook ingestion (Phase 2, §14.9) -----------------------------------
+  // Registered on every server so the loopback collector endpoint is available
+  // whenever a hook is configured; the route is token-gated by the global
+  // security hook (POST). When a live bus is present, each successful ingest is
+  // broadcast to SSE clients (§14.10).
+  const liveBus: LiveBus | undefined = deps.liveBus;
+  registerHookIngestRoutes(app, {
+    db,
+    config: deps.config,
+    onIngest: liveBus ? (result) => liveBus.broadcast(hookLiveEvent(result)) : undefined,
+  });
 
   // --- health -------------------------------------------------------------
   app.get("/api/v1/health", () => ({
@@ -398,13 +418,67 @@ export function registerRoutes(app: FastifyInstance, deps: ServerDeps): void {
     return reply;
   });
 
-  // --- live (Phase 1: status only; SSE streaming arrives in Phase 2 P2-9) ---
-  app.get("/api/v1/live", () => ({
-    status: "ok",
-    streaming: false,
-    note: "Live SSE streaming is delivered in Phase 2 (spec §14.10).",
-    time: new Date().toISOString(),
-  }));
+  // --- live (Phase 2, §14.10) -------------------------------------------
+  // GET /api/v1/live — collector status snapshot (counts + spool backlog + the
+  // OTLP port). Derived from local stores only; no payload content (§3).
+  app.get("/api/v1/live", async () => {
+    const status = await buildLiveStatus({
+      db,
+      home: deps.home,
+      otelPort: deps.otelPort,
+      apiPort: deps.port,
+    });
+    return { status: "ok", streaming: liveBus != null, ...status };
+  });
+
+  // GET /api/v1/live/stream — Server-Sent Events. Same-origin only: GET needs
+  // no token, and the origin check + no-CORS policy (security.ts) blocks
+  // cross-origin EventSource reads (§17, §19.1). We hijack the reply so Fastify
+  // leaves the long-lived socket to us; the connection timeout (0 = none) keeps
+  // it open. Each connection subscribes to the live bus and gets a heartbeat.
+  if (liveBus) {
+    app.get("/api/v1/live/stream", async (req, reply) => {
+      reply.hijack();
+      const raw = reply.raw;
+      raw.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+      const writeEvent = (event: { type: string; data: unknown }) => {
+        raw.write(`data: ${JSON.stringify(event)}\n\n`);
+      };
+
+      // Seed the new client with a status snapshot so the Live view renders
+      // immediately, before the first ingest.
+      const initial = await buildLiveStatus({
+        db,
+        home: deps.home,
+        otelPort: deps.otelPort,
+        apiPort: deps.port,
+      });
+      writeEvent(statusLiveEvent(initial));
+
+      const unsubscribe = liveBus.addListener((event) => writeEvent(event));
+
+      const heartbeat = setInterval(() => {
+        try {
+          writeEvent(heartbeatLiveEvent());
+        } catch {
+          // socket gone; the close handler will clean up
+        }
+      }, 15_000);
+
+      req.raw.on("close", () => {
+        clearInterval(heartbeat);
+        unsubscribe();
+      });
+
+      // Hijacked: do not return a body — Fastify must not finalize the reply.
+      return reply;
+    });
+  }
 
   // Expose getConfigValue for completeness (read single config value).
   app.get("/api/v1/settings/:key", async (req, reply) => {

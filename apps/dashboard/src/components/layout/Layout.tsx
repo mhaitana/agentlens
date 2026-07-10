@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   Moon,
+  Radio,
   Settings2,
   ShieldCheck,
   Sun,
@@ -23,6 +24,7 @@ const NAV: Array<{ name: RouteName; label: string; icon: typeof Activity }> = [
   { name: "sessions", label: "Sessions", icon: Activity },
   { name: "projects", label: "Projects", icon: FolderGit2 },
   { name: "recommendations", label: "Recommendations", icon: Lightbulb },
+  { name: "live", label: "Live", icon: Radio },
   { name: "privacy", label: "Privacy", icon: ShieldCheck },
   { name: "onboarding", label: "Getting started", icon: Settings2 },
 ];

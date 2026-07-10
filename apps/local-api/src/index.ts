@@ -15,6 +15,17 @@ import { createServer } from "node:net";
 export type { ServerDeps, ApiError } from "./deps.js";
 export { buildServer, startServer, type RunningServer } from "./server.js";
 export { ApiHttpError, badRequest, notFound, forbidden } from "./errors.js";
+export {
+  LiveBus,
+  buildLiveStatus,
+  hookLiveEvent,
+  otelLiveEvent,
+  statusLiveEvent,
+  heartbeatLiveEvent,
+  type LiveEvent,
+  type LiveListener,
+  type LiveStatusDeps,
+} from "./live.js";
 
 /** Generate a random hex runtime token (§17, §19.1). */
 export function generateRuntimeToken(): string {
@@ -34,8 +45,9 @@ export async function pickFreePort(preferred: number): Promise<number> {
       s.once("error", () => resolve(false));
       s.listen(port, "127.0.0.1", () => s.close(() => resolve(true)));
     });
-  if (await probe(preferred)) return preferred;
-  // Fall back to an OS-assigned free port.
+  // A concrete preferred port: use it if free, else fall back.
+  if (preferred > 0 && (await probe(preferred))) return preferred;
+  // 0 (or an occupied preferred) → let the OS assign a free loopback port.
   return new Promise<number>((resolve, reject) => {
     const s = createServer();
     s.unref();

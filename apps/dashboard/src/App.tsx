@@ -17,6 +17,7 @@ import { Projects } from "./features/projects/Projects.js";
 import { Recommendations } from "./features/recommendations/Recommendations.js";
 import { Privacy } from "./features/privacy/Privacy.js";
 import { Onboarding } from "./features/onboarding/Onboarding.js";
+import { Live } from "./features/live/Live.js";
 
 export function App() {
   useEnsureRoute();
@@ -46,6 +47,8 @@ function RouteScreen({ name }: { name: string }) {
       return <Privacy />;
     case "onboarding":
       return <Onboarding />;
+    case "live":
+      return <Live />;
     case "overview":
     default:
       return <Overview />;

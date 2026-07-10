@@ -24,6 +24,8 @@
     "@agentlens/database": "workspace:*",
     "@agentlens/domain": "workspace:*",
     "@agentlens/local-api": "workspace:*",
+    "@agentlens/hook-collector": "workspace:*",
+    "@agentlens/otel-receiver": "workspace:*",
     "@agentlens/recommendations": "workspace:*",
     "@agentlens/redaction": "workspace:*",
     "@agentlens/reporting": "workspace:*",

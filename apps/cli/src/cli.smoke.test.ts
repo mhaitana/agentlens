@@ -236,6 +236,14 @@ describe("M1-11 CLI smoke (spec §25, §26)", () => {
     expect(r.stdout).toContain("--no-open");
     expect(r.stdout).toContain("--port");
   });
+
+  it("observe --help is non-interactive and exits 0 (spec §16, §14.9)", () => {
+    const r = runAgentlens(tempHome, ["observe", "--help"]);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("observe");
+    expect(r.stdout).toContain("--otel-port");
+    expect(r.stdout).toContain("--json");
+  });
 });
 
 describe("F003 rules smoke (spec §13.10, §26)", () => {
