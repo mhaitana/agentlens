@@ -1,5 +1,5 @@
 /**
- * Live screen (spec §14.10, §14.9) — the live-collector dashboard.
+ * Live screen (spec) — the live-collector dashboard.
  *
  * Renders collector/hook/telemetry health indicators, the spool backlog, and a
  * rolling feed of hook + OTLP events delivered over the `/api/v1/live/stream`
@@ -10,7 +10,7 @@
  * All event content is structured data we produce server-side (counts + the
  * redacted hook-event name) — never raw transcript text — and is rendered as
  * React text children, so no user-controlled string reaches the DOM as HTML
- * (§19.4). No command links execute anything.
+ *. No command links execute anything.
  */
 import { Activity, Radio, Server, TriangleAlert } from "lucide-react";
 import { useLive } from "../../hooks/useApi.js";

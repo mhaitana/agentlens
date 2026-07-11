@@ -1,10 +1,10 @@
 /**
- * Recommendations screen (spec §13.9): severity, category, confidence,
+ * Recommendations screen (spec): severity, category, confidence,
  * evidence, estimated impact, remediation, and dismiss/restore actions.
  *
- * Evidence is the structured, queryable backing for each finding (§3.3
+ * Evidence is the structured, queryable backing for each finding (
  * "evidence before advice") — never generic advice. Remediations are proposed
- * only; AgentLens never applies them without explicit approval (§3.5), so the
+ * only; AgentLens never applies them without explicit approval, so the
  * dashboard shows previews read-only.
  */
 import { useState } from "react";

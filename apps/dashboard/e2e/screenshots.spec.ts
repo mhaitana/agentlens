@@ -31,13 +31,43 @@ const ENABLED = process.env.AGENTLENS_SCREENSHOTS === "1";
 // effects beyond the shared globalSetup boot.
 
 const VIEWPORT = { width: 1280, height: 860 } as const;
+const THEME_KEY = "agentlens-theme";
 
-async function capture(page: Page, file: string, hash: string): Promise<void> {
+async function setTheme(page: Page, theme: "light" | "dark"): Promise<void> {
+  await page.evaluate((t) => {
+    window.localStorage.setItem("agentlens-theme", t);
+    document.documentElement.setAttribute("data-theme", t);
+  }, theme);
+}
+
+async function capture(
+  page: Page,
+  file: string,
+  hash: string,
+  theme: "light" | "dark",
+): Promise<void> {
   await page.setViewportSize(VIEWPORT);
   await page.goto(hash);
+  await setTheme(page, theme);
   // Let charts (Recharts) and TanStack Query calls settle before capturing.
   await page.waitForLoadState("networkidle");
   // Nudge any async repaints (Recharts animations) one more frame.
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: join(IMG_DIR, file), fullPage: true });
+}
+
+async function captureSessionDetail(
+  page: Page,
+  file: string,
+  theme: "light" | "dark",
+): Promise<void> {
+  await page.setViewportSize(VIEWPORT);
+  await page.goto("/#/sessions");
+  await setTheme(page, theme);
+  await page.waitForLoadState("networkidle");
+  await page.locator("tbody tr").first().click();
+  await page.waitForURL(/#\/session\//);
+  await page.waitForLoadState("networkidle");
   await page.waitForTimeout(400);
   await page.screenshot({ path: join(IMG_DIR, file), fullPage: true });
 }
@@ -51,35 +81,52 @@ if (!ENABLED) {
   mkdirSync(IMG_DIR, { recursive: true });
 
   test.describe("README screenshots (synthetic fixtures only)", () => {
-    test("overview", async ({ page }: { page: Page }) => {
-      await capture(page, "overview.png", "/#/overview");
+    test("overview light", async ({ page }: { page: Page }) => {
+      await capture(page, "overview.png", "/#/overview", "light");
     });
 
-    test("sessions", async ({ page }: { page: Page }) => {
-      await capture(page, "sessions.png", "/#/sessions");
+    test("overview dark", async ({ page }: { page: Page }) => {
+      await capture(page, "overview-dark.png", "/#/overview", "dark");
     });
 
-    test("session detail", async ({ page }: { page: Page }) => {
-      await page.setViewportSize(VIEWPORT);
-      await page.goto("/#/sessions");
-      await page.waitForLoadState("networkidle");
-      await page.locator("tbody tr").first().click();
-      await page.waitForURL(/#\/session\//);
-      await page.waitForLoadState("networkidle");
-      await page.waitForTimeout(400);
-      await page.screenshot({ path: join(IMG_DIR, "session-detail.png"), fullPage: true });
+    test("sessions light", async ({ page }: { page: Page }) => {
+      await capture(page, "sessions.png", "/#/sessions", "light");
     });
 
-    test("recommendations", async ({ page }: { page: Page }) => {
-      await capture(page, "recommendations.png", "/#/recommendations");
+    test("sessions dark", async ({ page }: { page: Page }) => {
+      await capture(page, "sessions-dark.png", "/#/sessions", "dark");
     });
 
-    test("coaching", async ({ page }: { page: Page }) => {
-      await capture(page, "coaching.png", "/#/coaching");
+    test("session detail light", async ({ page }: { page: Page }) => {
+      await captureSessionDetail(page, "session-detail.png", "light");
     });
 
-    test("doctor", async ({ page }: { page: Page }) => {
-      await capture(page, "doctor.png", "/#/doctor");
+    test("session detail dark", async ({ page }: { page: Page }) => {
+      await captureSessionDetail(page, "session-detail-dark.png", "dark");
+    });
+
+    test("recommendations light", async ({ page }: { page: Page }) => {
+      await capture(page, "recommendations.png", "/#/recommendations", "light");
+    });
+
+    test("recommendations dark", async ({ page }: { page: Page }) => {
+      await capture(page, "recommendations-dark.png", "/#/recommendations", "dark");
+    });
+
+    test("coaching light", async ({ page }: { page: Page }) => {
+      await capture(page, "coaching.png", "/#/coaching", "light");
+    });
+
+    test("coaching dark", async ({ page }: { page: Page }) => {
+      await capture(page, "coaching-dark.png", "/#/coaching", "dark");
+    });
+
+    test("doctor light", async ({ page }: { page: Page }) => {
+      await capture(page, "doctor.png", "/#/doctor", "light");
+    });
+
+    test("doctor dark", async ({ page }: { page: Page }) => {
+      await capture(page, "doctor-dark.png", "/#/doctor", "dark");
     });
   });
 }

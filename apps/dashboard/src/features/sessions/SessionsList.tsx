@@ -1,5 +1,5 @@
 /**
- * Sessions list screen (spec §13.9). Search + project/date/model/status filters
+ * Sessions list screen (spec). Search + project/date/model/status filters
  * + pagination. Clicking a row navigates to the session-detail timeline.
  */
 import { useEffect, useState } from "react";

@@ -1,7 +1,7 @@
 /**
- * Minimal hash-based router (§13.9 navigation).
+ * Minimal hash-based router.
  *
- * Scope note (deviation from spec §5 which names TanStack Router): the
+ * Scope note (deviation from spec): the
  * dashboard has a small, fixed set of screens and is served same-origin by the
  * local API. A dependency-free hash router keeps the bundle small and avoids
  * TanStack Router's file/code-based + type-safe-params ceremony, which is

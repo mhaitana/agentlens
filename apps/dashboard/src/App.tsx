@@ -1,5 +1,5 @@
 /**
- * App shell: providers + route switch (spec §13.9).
+ * App shell: providers + route switch (spec).
  *
  * The dashboard reads the runtime bootstrap injected by the local API. If it
  * is missing (e.g. the bundle is opened as a static file) we show a clear

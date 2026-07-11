@@ -253,95 +253,256 @@ function initPrivacyComparator() {
 }
 
 function initRulesExplorer() {
+  // Generated from packages/analysis-engine/src/rules/index.ts RULE_METADATA.
+  // Keep in sync with the analysis engine. section references stripped for the public site.
   const rules = [
     {
       id: "TOOLS-001",
       category: "tools",
-      title: "Redundant File Read",
-      desc: "File read ≥ 4 times with no intervening modification. Recommends inspecting lines selectively or caching.",
+      title: "Repeated unchanged file reads",
+      desc: "The same file read repeatedly without an intervening write or edit.",
+    },
+    {
+      id: "TOOLS-002",
+      category: "tools",
+      title: "Repeated equivalent command",
+      desc: "A normalised command executed repeatedly within a short period.",
     },
     {
       id: "TOOLS-003",
       category: "tools",
-      title: "High-Frequency Tool Polling",
-      desc: "Repeated invocation of identical tool call within a tight loop.",
+      title: "Repeated unchanged failure",
+      desc: "Materially identical commands fail repeatedly without a meaningful change in arguments or strategy.",
+    },
+    {
+      id: "TOOLS-004",
+      category: "tools",
+      title: "Excessive broad test runs",
+      desc: "A broad/full test suite is repeatedly run after changes limited to a narrow project area. Conservative confidence.",
+    },
+    {
+      id: "TOOLS-005",
+      category: "tools",
+      title: "Oversized tool result",
+      desc: "Command or tool output is unusually large and likely contributes unnecessary context.",
+    },
+    {
+      id: "TOOLS-006",
+      category: "tools",
+      title: "High exploration-to-change ratio",
+      desc: "A session reads/searches many files but changes very few. Moderate confidence — exploration is not always wasteful.",
+    },
+    {
+      id: "TOOLS-007",
+      category: "tools",
+      title: "Repeated unchanged searches",
+      desc: "The same search (tool + input) recurs without a change in query.",
+    },
+    {
+      id: "TOOLS-008",
+      category: "tools",
+      title: "Repeatedly failing tool",
+      desc: "A tool (often an MCP server) fails a large share of its calls.",
     },
     {
       id: "VERIFY-001",
       category: "verification",
-      title: "Unverified Code Mutation",
-      desc: "File modified without subsequent test execution, compiler check, or linter verification.",
+      title: "No verification after code changes",
+      desc: "Code changes occurred but no recognised verification command followed.",
+    },
+    {
+      id: "VERIFY-002",
+      category: "verification",
+      title: "Changes after final successful verification",
+      desc: "Files changed after the last successful test, build, lint or typecheck.",
+    },
+    {
+      id: "VERIFY-003",
+      category: "verification",
+      title: "Session ended with failed verification",
+      desc: "The latest relevant verification command failed and no later success occurred.",
     },
     {
       id: "VERIFY-004",
       category: "verification",
-      title: "Test Failure Ignore",
-      desc: "Agent proceeded with further edits despite failing automated verification checks.",
+      title: "Narrow verification only",
+      desc: "A substantial cross-cutting change received only an obviously narrow verification step. Conservative confidence.",
+    },
+    {
+      id: "VERIFY-005",
+      category: "verification",
+      title: "No test runs despite code changes",
+      desc: "No recognised test command ran while code was being changed.",
+    },
+    {
+      id: "VERIFY-006",
+      category: "verification",
+      title: "No build verification despite changes",
+      desc: "No recognised build command ran while substantial changes were made. Conservative.",
+    },
+    {
+      id: "WORKFLOW-001",
+      category: "workflow",
+      title: "Excessive corrective turns",
+      desc: "Multiple user prompts appear to correct, reverse or clarify prior work.",
     },
     {
       id: "WORKFLOW-002",
       category: "workflow",
-      title: "Context Window Exhaustion Risk",
-      desc: "Session exceeds high token threshold without compacting or starting fresh session.",
+      title: "Very long session with task switching",
+      desc: "Conservative deterministic indicators only in Phase 1; semantic detection in Phase 3.",
+    },
+    {
+      id: "WORKFLOW-003",
+      category: "workflow",
+      title: "Large changes without verification",
+      desc: "Large per-session change sets with sessions that changed code without verification.",
+    },
+    {
+      id: "WORKFLOW-004",
+      category: "workflow",
+      title: "Repeated manual validation suitable for a hook",
+      desc: "Deterministic verification commands run very frequently by hand — candidates for a Claude Code hook.",
     },
     {
       id: "CONTEXT-001",
       category: "context",
-      title: "Excessive Directory Listing",
-      desc: "Repeated broad recursive directory scans instead of targeted file lookups.",
+      title: "Frequent compaction",
+      desc: "A session experiences repeated compactions or unusually high pre-compaction context.",
+    },
+    {
+      id: "CONTEXT-002",
+      category: "context",
+      title: "Large repeated outputs",
+      desc: "Large command outputs repeatedly enter the session.",
+    },
+    {
+      id: "CONTEXT-003",
+      category: "context",
+      title: "Excessive stale context",
+      desc: "A large share of input tokens are cache reads alongside compaction — stale context is carried and re-summarised.",
+    },
+    {
+      id: "CONTEXT-004",
+      category: "context",
+      title: "Verbose exploration",
+      desc: "High read/search volume with very few files changed — exploration that could be delegated to a subagent.",
+    },
+    {
+      id: "PROMPT-001",
+      category: "prompt",
+      title: "Prompts rarely state acceptance criteria",
+      desc: "Most prompts do not reference what 'done' looks like. Heuristic, from per-prompt structural features.",
     },
     {
       id: "PROMPT-002",
       category: "prompt",
-      title: "Underspecified Task Objective",
-      desc: "Initial prompt lacks verifiable constraints or success criteria.",
+      title: "Prompts rarely request verification",
+      desc: "Few prompts ask the agent to verify its work. Heuristic, from per-prompt structural features.",
+    },
+    {
+      id: "PROMPT-003",
+      category: "prompt",
+      title: "Multiple independent tasks per prompt",
+      desc: "Prompts bundle several independent objectives, making verification harder. Heuristic.",
+    },
+    {
+      id: "PROMPT-004",
+      category: "prompt",
+      title: "Vague references in prompts",
+      desc: "Prompts use open references like 'this' or 'the issue' without naming the target. Heuristic.",
+    },
+    {
+      id: "PROMPT-005",
+      category: "prompt",
+      title: "Repeated user corrections",
+      desc: "A meaningful share of prompts correct or reverse prior work. Heuristic + corrective-turn count.",
     },
     {
       id: "MODEL-001",
       category: "model",
-      title: "Suboptimal Model Capability Match",
-      desc: "High-cost tier model used for routine mechanical formatting tasks.",
+      title: "High-cost model used for light work",
+      desc: "A high relative cost-tier model is dominant on low-activity work. Tiers are relative + configurable.",
+    },
+    {
+      id: "MODEL-002",
+      category: "model",
+      title: "Lower-capability model struggling",
+      desc: "A low relative capability-tier model is dominant with a high failure rate. Tiers are relative + configurable.",
+    },
+    {
+      id: "MODEL-003",
+      category: "model",
+      title: "Stale context sent to a premium model",
+      desc: "A high capability-tier model receives mostly cached (stale) input. Tiers are relative + configurable.",
     },
     {
       id: "SECURITY-001",
       category: "security",
-      title: "Sensitive File Access Attempt",
-      desc: "Agent read or attempted access to credential stores (.env, ssh keys).",
+      title: "Sensitive path access",
+      desc: "Access to likely-sensitive files (.env, credentials, private keys, secret directories, cloud credentials). Never exposes the value.",
+    },
+    {
+      id: "SECURITY-002",
+      category: "security",
+      title: "Potential secret in persisted content",
+      desc: "The redaction pipeline detected a likely secret. Only the finding category is stored, not the secret.",
     },
     {
       id: "CONFIG-001",
       category: "configuration",
-      title: "Overly Permissive Tool Scope",
-      desc: "Configuration allows unrestricted shell execution or unconstrained path access.",
+      title: "Overly broad retention or exclusions",
+      desc: "AgentLens config broadens what is kept (full-local/long retention) or narrows what is analysed (broad exclusions).",
+    },
+    {
+      id: "CONFIG-002",
+      category: "configuration",
+      title: "Local-first boundary weakened",
+      desc: "Dashboard binds beyond loopback or external analysis is enabled with a non-local provider.",
     },
   ];
 
   const searchInput = document.getElementById("rule-search");
   const pills = document.querySelectorAll(".category-pill");
   const grid = document.getElementById("rules-grid");
+  const loadMoreBtn = document.getElementById("rules-load-more");
+  const showingLabel = document.getElementById("rules-showing");
 
+  const PAGE_SIZE = 6;
   let activeCategory = "all";
   let searchQuery = "";
+  let visibleCount = PAGE_SIZE;
+
+  function matchesSearch(r, q) {
+    return (
+      !q ||
+      r.id.toLowerCase().includes(q) ||
+      r.title.toLowerCase().includes(q) ||
+      r.desc.toLowerCase().includes(q)
+    );
+  }
+
+  function getFilteredRules() {
+    const q = searchQuery.toLowerCase();
+    return rules.filter((r) => {
+      const matchesCategory = activeCategory === "all" || r.category === activeCategory;
+      return matchesCategory && matchesSearch(r, q);
+    });
+  }
 
   function renderRules() {
     if (!grid) return;
-    const filtered = rules.filter((r) => {
-      const matchesCategory = activeCategory === "all" || r.category === activeCategory;
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        r.id.toLowerCase().includes(q) ||
-        r.title.toLowerCase().includes(q) ||
-        r.desc.toLowerCase().includes(q);
-      return matchesCategory && matchesSearch;
-    });
+    const filtered = getFilteredRules();
 
     if (!filtered.length) {
       grid.innerHTML = `<div class="rules-empty">No matching recommendation rules found.</div>`;
+      if (loadMoreBtn) loadMoreBtn.hidden = true;
+      if (showingLabel) showingLabel.textContent = "";
       return;
     }
 
-    grid.innerHTML = filtered
+    const page = filtered.slice(0, visibleCount);
+    grid.innerHTML = page
       .map(
         (r) => `
           <div class="rule-card">
@@ -355,11 +516,23 @@ function initRulesExplorer() {
         `,
       )
       .join("");
+
+    if (loadMoreBtn) {
+      loadMoreBtn.hidden = visibleCount >= filtered.length;
+    }
+    if (showingLabel) {
+      showingLabel.textContent = `Showing ${page.length} of ${filtered.length}`;
+    }
+  }
+
+  function resetPagination() {
+    visibleCount = PAGE_SIZE;
   }
 
   if (searchInput) {
     searchInput.addEventListener("input", (e) => {
       searchQuery = e.target.value;
+      resetPagination();
       renderRules();
     });
   }
@@ -374,8 +547,16 @@ function initRulesExplorer() {
         pill.classList.add("active");
         pill.setAttribute("aria-checked", "true");
         activeCategory = pill.getAttribute("data-category");
+        resetPagination();
         renderRules();
       });
+    });
+  }
+
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener("click", () => {
+      visibleCount += PAGE_SIZE;
+      renderRules();
     });
   }
 
@@ -392,7 +573,8 @@ function initLightbox() {
   if (!modal || !modalImg || !cards.length) return;
 
   const open = (card) => {
-    const img = card.querySelector("img");
+    const dark = document.documentElement.getAttribute("data-theme") === "dark";
+    const img = card.querySelector(dark ? ".screenshot-dark" : ".screenshot-light");
     const title = card.querySelector("h4");
     if (!img) return;
     modalImg.src = img.src;

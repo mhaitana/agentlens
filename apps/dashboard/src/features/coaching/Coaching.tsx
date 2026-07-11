@@ -1,16 +1,16 @@
 /**
- * Coaching screen (spec §15.12): coaching overview + Prompt Coach.
+ * Coaching screen (spec): coaching overview + Prompt Coach.
  *
  * The overview surfaces top opportunities, improvements over time, repeated
  * behaviours, estimated avoidable usage (labelled estimated — never official
- * billing data, §3.4), and verification / prompt-quality / model-allocation
+ * billing data,), and verification / prompt-quality / model-allocation
  * trends. The Prompt Coach lists recent prompts with deterministic quality
- * scores and a §15.6 detail view (assessment, suggested structure,
+ * scores and a(assessment, suggested structure,
  * outcome-correlated comparison, recurring templates, baseline comparison).
  *
  * Every quality score is `heuristic` (deterministic structural signals); no
- * external model is invoked (§15.5 — external semantic analysis stays disabled
- * by default). The model catalogue is configurable (§15.4) — no hardcoded
+ * external model is invoked ( — external semantic analysis stays disabled
+ * by default). The model catalogue is configurable — no hardcoded
  * permanent model claims, only relative tiers.
  */
 import { useState } from "react";
@@ -327,8 +327,8 @@ function PromptCoachSection({
       <div>
         <h3 className="text-lg font-semibold tracking-tight">Prompt Coach</h3>
         <p className="text-sm text-[var(--al-text-secondary)]">
-          Deterministic prompt-quality scoring (§15.5). Select a prompt for a structured comparison
-          and suggested improvement.
+          Deterministic prompt-quality scoring. Select a prompt for a structured comparison and
+          suggested improvement.
         </p>
       </div>
 

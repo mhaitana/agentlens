@@ -1,5 +1,5 @@
 /**
- * Small UI primitives (spec §18.1 — clean, minimal, calm; §18.5 accessible).
+ * Small UI primitives (spec— clean, minimal, calm;).
  * One file for the trivial building blocks so features compose them without a
  * dozen tiny modules.
  */
@@ -128,7 +128,7 @@ export function Badge({
   );
 }
 
-/** A single labelled metric stat (spec §13.9 overview). */
+/** A single labelled metric stat (spec). */
 export function Stat({
   label,
   value,
@@ -183,7 +183,7 @@ export function ErrorState({ error }: { error: unknown }) {
   );
 }
 
-/** Helpful empty state (§18.4). */
+/** Helpful empty state. */
 export function EmptyState({
   title,
   children,
@@ -202,7 +202,7 @@ export function EmptyState({
   );
 }
 
-/** Provenance tag — communicates how a metric was derived (§3.4). */
+/** Provenance tag — communicates how a metric was derived. */
 export function ProvenanceTag({ provenance }: { provenance: string }) {
   return (
     <span

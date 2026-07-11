@@ -1,5 +1,5 @@
 /**
- * Overview screen (spec §13.9). Surfaces the high-level analytics snapshot with
+ * Overview screen (spec). Surfaces the high-level analytics snapshot with
  * honest-metric provenance tags and the mandatory cost estimate caveat.
  */
 import { useState } from "react";

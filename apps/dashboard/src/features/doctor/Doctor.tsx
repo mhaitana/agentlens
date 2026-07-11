@@ -1,8 +1,8 @@
 /**
- * Configuration Doctor screen (spec §15.12): overall health, findings by scope,
+ * Configuration Doctor screen (spec): overall health, findings by scope,
  * proposed patches with diff preview, validation status, and apply / rollback.
  *
- * Safety (§3.5, §15.9): every patch is `automaticallyApplicable: false`. The
+ * Safety: every patch is `automaticallyApplicable: false`. The
  * dashboard shows the diff + impact + target file (steps 1–3); the user must
  * click Apply and confirm (step 5). Apply backs up, writes, and validates
  * (steps 4, 6, 7) on the server; rollback restores from the backup. Nothing is
@@ -10,7 +10,7 @@
  * never applied.
  *
  * All user-controlled text (diffs, paths, findings) is rendered as React text
- * nodes — never `dangerouslySetInnerHTML` (§19: no terminal-escape execution,
+ * nodes — never `dangerouslySetInnerHTML` (: no terminal-escape execution,
  * no transcript HTML).
  */
 import { useMemo, useState } from "react";
@@ -124,7 +124,7 @@ export function Doctor() {
                   <span className="ml-2 text-xs text-[var(--al-text-muted)]">{r.rollbackHint}</span>
                 </div>
                 {/* Applied patches self-clear their finding on write, so the patch
-                 * row vanishes on refetch — expose rollback here instead (§3.5
+                 * row vanishes on refetch — expose rollback here instead (
                  * step 7). rollbackPatch needs patchId + targetFile to restore. */}
                 {r.applied && r.backupPath ? (
                   <Button

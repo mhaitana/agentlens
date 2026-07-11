@@ -1,5 +1,5 @@
 /**
- * TanStack Query hooks over the local API (spec §13.9, §17).
+ * TanStack Query hooks over the local API (spec).
  *
  * Each hook maps to one API endpoint and returns the typed view. The hooks are
  * the only place the dashboard touches `api.*`, so features stay declarative
@@ -150,7 +150,7 @@ export function useRestoreRecommendation() {
   });
 }
 
-/** Mark a recommendation resolved (POST /recommendations/:id/resolve, §15.13). */
+/** Mark a recommendation resolved (POST /recommendations/:id/resolve,). */
 export function useResolveRecommendation() {
   const qc = useQueryClient();
   return useMutation({
@@ -230,7 +230,7 @@ export function useExportData() {
   });
 }
 
-/** GET /api/v1/live — live collector status snapshot (spec §14.10). Refreshed
+/** GET /api/v1/live — live collector status snapshot (spec). Refreshed
  * frequently so the Live view reflects collector health even without SSE. */
 export function useLive() {
   return useQuery<LiveStatus>({
@@ -243,7 +243,7 @@ export function useLive() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Coaching (Phase 3, §15.12)                                                 */
+/* Coaching (Phase 3,)                                                 */
 /* -------------------------------------------------------------------------- */
 
 /** GET /api/v1/coaching/overview. */
@@ -272,7 +272,7 @@ export function useCoachingPrompts(args: CoachingPromptsArgs) {
   });
 }
 
-/** GET /api/v1/coaching/prompts/:id — Prompt Coach detail (§15.6). */
+/** GET /api/v1/coaching/prompts/:id — Prompt Coach detail. */
 export function useCoachingPrompt(id: string | null) {
   return useQuery<CoachingPromptDetail>({
     queryKey: id ? qk.coachingPrompt(id) : ["coaching-prompt", "none"],
@@ -282,7 +282,7 @@ export function useCoachingPrompt(id: string | null) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Configuration Doctor (Phase 3, §15.12)                                     */
+/* Configuration Doctor (Phase 3,)                                     */
 /* -------------------------------------------------------------------------- */
 
 /** GET /api/v1/doctor — read-only report + rollback-eligible patch ids. */
@@ -303,7 +303,7 @@ export interface ApplyDoctorArgs {
   project?: string;
 }
 
-/** POST /api/v1/doctor/apply — apply approved patches (token-gated, §3.5). */
+/** POST /api/v1/doctor/apply — apply approved patches (token-gated,). */
 export function useApplyDoctorPatch() {
   const qc = useQueryClient();
   return useMutation({

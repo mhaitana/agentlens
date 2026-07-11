@@ -163,27 +163,45 @@ paths**.
 
 ### Overview
 
-![AgentLens dashboard overview showing aggregate usage and honest cost caveat](docs/img/overview.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/overview-dark.png">
+  <img src="docs/img/overview.png" alt="AgentLens dashboard overview showing aggregate usage and honest cost caveat">
+</picture>
 
 ### Sessions
 
-![Sessions list showing reconstructed local sessions](docs/img/sessions.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/sessions-dark.png">
+  <img src="docs/img/sessions.png" alt="Sessions list showing reconstructed local sessions">
+</picture>
 
 ### Session detail
 
-![Session detail with reconstructed timeline](docs/img/session-detail.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/session-detail-dark.png">
+  <img src="docs/img/session-detail.png" alt="Session detail with reconstructed timeline">
+</picture>
 
 ### Recommendations
 
-![Recommendations list showing TOOLS-001 with structured evidence](docs/img/recommendations.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/recommendations-dark.png">
+  <img src="docs/img/recommendations.png" alt="Recommendations list showing TOOLS-001 with structured evidence">
+</picture>
 
 ### Coaching
 
-![Coaching view with deterministic Prompt Coach](docs/img/coaching.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/coaching-dark.png">
+  <img src="docs/img/coaching.png" alt="Coaching view with deterministic Prompt Coach">
+</picture>
 
 ### Configuration Doctor
 
-![Configuration Doctor showing read-only findings and safe patch proposal](docs/img/doctor.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/doctor-dark.png">
+  <img src="docs/img/doctor.png" alt="Configuration Doctor showing read-only findings and safe patch proposal">
+</picture>
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * Projects screen (spec §13.9): per-project usage summary + scan status.
+ * Projects screen (spec): per-project usage summary + scan status.
  * Shows session counts, redacted paths (never raw), and links to filtered
  * sessions. Raw paths are never displayed — only the stored redacted label.
  */

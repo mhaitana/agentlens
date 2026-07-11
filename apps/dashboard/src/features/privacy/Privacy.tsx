@@ -1,17 +1,17 @@
 /**
- * Privacy & settings screen (spec §13.9 "Privacy and settings", §8).
+ * Privacy & settings screen (spec"Privacy and settings",).
  *
  * Interactive privacy controls (M2-7): the user can change the active privacy
- * mode — full-local requires an explicit opt-in after a strong warning (§8.3)
+ * mode — full-local requires an explicit opt-in after a strong warning
  * — adjust the retention window, add/remove excluded project paths, and toggle
  * email/home-path redaction. All edits go through `POST /api/v1/settings`
  * (`useUpdateSetting`), which is token-gated and re-validates + persists the
- * versioned config (§9). Secrets/auth headers/known API-key formats are never
- * persisted in any mode (§8.4) — the dashboard always says so.
+ * versioned config. Secrets/auth headers/known API-key formats are never
+ * persisted in any mode — the dashboard always says so.
  *
  * Destructive actions (purge / export) require the runtime token (sent by the
  * API client) and a confirmation dialog. All user-controlled text is rendered
- * as React children (§19.4).
+ * as React children.
  */
 import { useState } from "react";
 import { Download, Plus, Trash2, X, Shield, Eye, Database, Lock } from "lucide-react";
@@ -166,7 +166,7 @@ export function Privacy() {
         is preserved. This cannot be undone.
       </ConfirmDialog>
 
-      {/* Full-local explicit opt-in (§8.3): strong warning before applying. */}
+      {/* Full-local explicit opt-in: strong warning before applying. */}
       <ConfirmDialog
         open={confirmFullLocal}
         title="Enable full-local mode?"

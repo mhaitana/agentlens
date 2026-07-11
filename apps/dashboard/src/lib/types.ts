@@ -1,6 +1,6 @@
 /**
- * API response view types (spec §17). The dashboard consumes *only* these
- * normalised shapes — never raw Claude transcript shapes (§3.6). These mirror
+ * API response view types (spec). The dashboard consumes *only* these
+ * normalised shapes — never raw Claude transcript shapes. These mirror
  * the JSON the local API serialises, so dates are ISO strings (not `Date`),
  * matching the read-side privacy views in `apps/local-api/src/privacy.ts`.
  *
@@ -12,7 +12,7 @@ import type {
   Recommendation as DomainRecommendation,
 } from "@agentlens/domain";
 
-/** A paginated list envelope (spec §17 "paginate large collections"). */
+/** A paginated list envelope (spec"paginate large collections"). */
 export interface PageEnvelope<T> {
   items: T[];
   total: number;
@@ -86,7 +86,7 @@ export interface SessionDetailResponse {
   project: ProjectItem | null;
 }
 
-/** A merged timeline event for the session-detail screen (§13.9). */
+/** A merged timeline event for the session-detail screen. */
 export interface TimelineEvent {
   timestamp: string;
   kind: string;
@@ -177,7 +177,7 @@ export interface SettingsResponse {
   };
 }
 
-/** GET /api/v1/live — live collector status snapshot (spec §14.10). */
+/** GET /api/v1/live — live collector status snapshot (spec). */
 export interface LiveStatus {
   status: string;
   streaming: boolean;
@@ -196,7 +196,7 @@ export interface LiveEvent {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Coaching (Phase 3, §15.12)                                                 */
+/* Coaching (Phase 3,)                                                 */
 /* -------------------------------------------------------------------------- */
 
 /** GET /api/v1/coaching/overview — top opportunities, trends, avoidable usage. */
@@ -262,7 +262,7 @@ export interface CoachingPromptListItem {
   qualityProvenance: "heuristic";
 }
 
-/** GET /api/v1/coaching/prompts/:id — Prompt Coach detail (§15.6). */
+/** GET /api/v1/coaching/prompts/:id — Prompt Coach detail. */
 export interface CoachingPromptDetail {
   id: string;
   sessionId: string;
@@ -308,7 +308,7 @@ export interface CoachingPromptDetail {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Configuration Doctor (Phase 3, §15.12)                                     */
+/* Configuration Doctor (Phase 3,)                                     */
 /* -------------------------------------------------------------------------- */
 
 /** A proposed doctor patch (subset the dashboard renders). */

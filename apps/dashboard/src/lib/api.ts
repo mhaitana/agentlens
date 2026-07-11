@@ -1,19 +1,19 @@
 /**
- * Typed API client for the local AgentLens API (spec §17).
+ * Typed API client for the local AgentLens API (spec).
  *
  * The dashboard is served *same-origin* by the local API, which injects a
  * runtime bootstrap into index.html:
  *
  *   window.__AGENTLENS__ = { apiBase: "/api/v1", token: "<runtime-token>" }
  *
- * Every mutating request carries `X-AgentLens-Token` (§19.1). The token is
+ * Every mutating request carries `X-AgentLens-Token`. The token is
  * only readable by same-origin JS, so cross-origin pages cannot mutate. Read
  * requests are not token-gated, but the API restricts `Origin` to loopback
- * (§17). If the bootstrap is missing (e.g. opened as a static file) we fail
+ *. If the bootstrap is missing (e.g. opened as a static file) we fail
  * loudly rather than silently degrading — the dashboard needs the API.
  *
  * The dashboard consumes *only* these normalised view types — never raw
- * Claude transcript shapes (§3.6 extensible source architecture).
+ * Claude transcript shapes.
  */
 
 /** Bootstrap injected by the local API into index.html at serve time. */
@@ -66,7 +66,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const headers: Record<string, string> = { accept: "application/json" };
   if (body !== undefined) headers["content-type"] = "application/json";
 
-  // Mutating methods require the runtime token (§19.1).
+  // Mutating methods require the runtime token.
   if (method !== "GET") headers["x-agentlens-token"] = cfg().token;
 
   let res: Response;

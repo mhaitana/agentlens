@@ -1,5 +1,5 @@
 /**
- * App shell: sidebar nav + topbar + content (spec §18.1).
+ * App shell: sidebar nav + topbar + content (spec).
  */
 import type { ReactNode } from "react";
 import {

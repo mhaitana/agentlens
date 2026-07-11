@@ -1,9 +1,9 @@
 /**
- * Display formatters (spec §3.4 honest metrics, §13.6 cost provenance).
+ * Display formatters (spec cost provenance).
  *
  * Honest-metrics rule: an estimate is never presented as a measured value.
  * Cost is *always* labelled "Estimated — not an official billing value"
- * (§3.4). Provenance tags communicate exact/reported/inferred/estimated/
+ *. Provenance tags communicate exact/reported/inferred/estimated/
  * heuristic/unknown so users can judge reliability.
  */
 import { confidenceBand } from "@agentlens/domain";
@@ -26,7 +26,7 @@ export function formatTokens(n: number | null | undefined): string {
   return formatNumber(n);
 }
 
-/** USD cost, always flagged as estimated (§3.4). */
+/** USD cost, always flagged as estimated. */
 export function formatCost(usd: number | null | undefined): string {
   if (usd === null || usd === undefined) return "—";
   if (usd === 0) return "$0.00";
@@ -34,7 +34,7 @@ export function formatCost(usd: number | null | undefined): string {
   return `$${usd.toFixed(2)}`;
 }
 
-/** The mandatory estimate caveat for any cost figure (§3.4). */
+/** The mandatory estimate caveat for any cost figure. */
 export const COST_ESTIMATE_LABEL = "Estimated — not an official billing value";
 
 /** Duration in ms → human ("12m 34s", "1h 5m", "45s"). */
@@ -117,12 +117,12 @@ export function formatProvenanced<T>(
   return fmt(pv.value);
 }
 
-/** Confidence band display (§18.3): "High/Moderate/Low confidence". */
+/** Confidence band display: "High/Moderate/Low confidence". */
 export function confidenceLabel(band: ConfidenceBand): string {
   return `${band.charAt(0).toUpperCase() + band.slice(1)} confidence`;
 }
 
-/** Escape user-controlled text before injecting (§19.4). React already escapes
+/** Escape user-controlled text before injecting. React already escapes
  * text content, so this is only needed when dangerouslySetInnerHTML is used —
  * which the dashboard avoids. Kept for completeness/documentation. */
 export function escapeHtml(s: string): string {

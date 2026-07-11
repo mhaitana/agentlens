@@ -1,5 +1,5 @@
 /**
- * Dark/light theme store (§18.1). Persisted to localStorage, applied by
+ * Dark/light theme store. Persisted to localStorage, applied by
  * setting `data-theme` on <html> (see styles.css). Defaults to the OS
  * preference.
  */

@@ -1,17 +1,17 @@
 /**
- * SSE subscription hook for the live collector (spec §14.10).
+ * SSE subscription hook for the live collector (spec).
  *
  * Opens a same-origin `EventSource` to `/api/v1/live/stream` and reduces the
  * stream into dashboard state: the latest status snapshot, a rolling event
  * feed, and a connection health flag. The endpoint is GET (no runtime token
  * required); cross-origin `EventSource` reads are blocked by the API's
- * no-CORS + loopback-origin policy (§17, §19.1), so only the same-origin
+ * no-CORS + loopback-origin policy, so only the same-origin
  * dashboard can subscribe.
  *
  * The hook is disabled when the collector isn't streaming (Phase 1 dashboard
  * mode) so we never hang on a 404 stream. All event payloads are
  * JSON-stringified structured events we produce server-side — never raw
- * transcript text — and are rendered as React text children (§19.4).
+ * transcript text — and are rendered as React text children.
  */
 import { useEffect, useRef, useState } from "react";
 import { apiBase } from "../lib/api.js";

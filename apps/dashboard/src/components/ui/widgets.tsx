@@ -1,5 +1,5 @@
 /**
- * Composite widgets: confidence display (§18.3), pagination, form fields.
+ * Composite widgets: confidence display, pagination, form fields.
  */
 import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -10,7 +10,7 @@ import { Badge, Button } from "./primitives.js";
 // Re-export primitives that features commonly grab alongside widgets.
 export { Badge, Button };
 
-/** Confidence pill + numeric score, severity never colour-alone (§18.5). */
+/** Confidence pill + numeric score, severity never colour-alone. */
 export function ConfidenceBadge({ confidence }: { confidence: number }) {
   const band = confidenceBand(confidence);
   const tone = band === "high" ? "low" : band === "moderate" ? "medium" : "high";
@@ -105,7 +105,7 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={cn(inputClass, "min-w-32", props.className)} />;
 }
 
-/** A confirmation modal for destructive actions (§8 purge). */
+/** A confirmation modal for destructive actions. */
 export function ConfirmDialog({
   open,
   title,

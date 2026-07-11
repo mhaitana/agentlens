@@ -1,5 +1,5 @@
 /**
- * Getting started / onboarding screen (spec §13.9 onboarding).
+ * Getting started / onboarding screen (spec).
  *
  * Explains what AgentLens reads, where data remains, the active privacy mode,
  * discovered Claude Code sources, project exclusions, and the first-scan

@@ -1,13 +1,13 @@
 /**
- * Session detail screen (spec §13.9). Renders the merged timeline returned by
+ * Session detail screen (spec). Renders the merged timeline returned by
  * the API (prompts, model requests, tool calls, file ops, command runs,
  * verification runs, failures, compactions) plus per-session recommendations.
  *
- * The API already privacy-gates content fields (§13.11 "Privacy-mode
+ * The API already privacy-gates content fields ( "Privacy-mode
  * restrictions are enforced"); the dashboard only renders what it receives, so
  * it can never display content unavailable under the active mode. All
  * user-controlled text is rendered as React text children — never injected as
- * HTML — so terminal/ANSI escapes and transcript HTML cannot execute (§19.4).
+ * HTML — so terminal/ANSI escapes and transcript HTML cannot execute.
  */
 import {
   Activity,
