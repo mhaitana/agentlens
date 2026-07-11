@@ -479,6 +479,9 @@ describe("local-api dashboard serving (§13.8, §19.1)", () => {
     const res = await server.inject({ method: "GET", url: "/" });
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toContain("text/html");
+    // The SPA shell must never be cached: a cached index.html references old
+    // asset hashes and 404s across any reinstall/redeploy that re-hashes them.
+    expect(res.headers["cache-control"]).toBe("no-store");
     // Token bootstrap injected (§19.1) — same-origin dashboard reads it.
     expect(res.body).toContain("window.__AGENTLENS__");
     expect(res.body).toContain(deps.runtimeToken);
@@ -492,6 +495,8 @@ describe("local-api dashboard serving (§13.8, §19.1)", () => {
     const res = await server.inject({ method: "GET", url: "/assets/app.js" });
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toContain("text/javascript");
+    // Hashed assets are immutable — safe to cache long-term.
+    expect(res.headers["cache-control"]).toBe("public, max-age=31536000, immutable");
     expect(res.body).toContain("console.log");
     await server.close();
   });

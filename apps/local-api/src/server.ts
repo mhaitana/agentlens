@@ -61,6 +61,9 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
 
     // Serve the SPA shell at the root and for any non-/api route (client-side
     // routing). Static assets under /assets are served directly.
+    // Cache headers: hashed /assets files are immutable (safe to cache long-term),
+    // but the SPA shell must NEVER be cached — a cached index.html references old
+    // asset hashes and breaks (404) across any reinstall/redeploy that changes them.
     app.get("/assets/*", async (req, reply) => {
       const rel = (req.params as { "*": string })["*"];
       const file = join(assetsRoot, rel);
@@ -69,6 +72,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
         return reply.code(404).send({ code: "not_found", message: "Asset not found." });
       const contentType = CONTENT_TYPES[extname(file).toLowerCase()] ?? "application/octet-stream";
       reply.header("content-type", contentType);
+      reply.header("cache-control", "public, max-age=31536000, immutable");
       return reply.send(await readFile(file));
     });
 
@@ -82,10 +86,13 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
         const file = join(dashboardDir, path);
         if (file.startsWith(dashboardDir) && existsSync(file)) {
           reply.header("content-type", CONTENT_TYPES[ext] ?? "application/octet-stream");
+          reply.header("cache-control", "no-cache");
           return reply.send(await readFile(file));
         }
       }
+      // SPA shell — never cache, so a stale index.html can't reference old asset hashes.
       reply.header("content-type", "text/html; charset=utf-8");
+      reply.header("cache-control", "no-store");
       return reply.send(indexHtml);
     });
   }
