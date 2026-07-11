@@ -20,6 +20,7 @@ import { makeDashboardCommand } from "./commands/dashboard.js";
 import { makeObserveCommand } from "./commands/observe.js";
 import { makeIntegrateCommand } from "./commands/integrate.js";
 import { makeTelemetryCommand } from "./commands/telemetry.js";
+import { makeDoctorCommand } from "./commands/doctor.js";
 
 const program = new Command();
 
@@ -39,6 +40,7 @@ program.addCommand(makeDashboardCommand());
 program.addCommand(makeObserveCommand());
 program.addCommand(makeIntegrateCommand());
 program.addCommand(makeTelemetryCommand());
+program.addCommand(makeDoctorCommand());
 program.addCommand(makeVersionCommand());
 
 program.parseAsync(process.argv).catch((err: unknown) => {

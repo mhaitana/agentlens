@@ -393,3 +393,168 @@ describe("M2-6 dashboard launch (spec §13.8)", () => {
     expect(existsSync(join(dashHome, "runtime", "server.json"))).toBe(false);
   }, 30_000);
 });
+
+describe("F007 doctor smoke (spec §15.7–15.11, §3.5, §26)", () => {
+  let docHome: string; // AgentLens home (backups/drafts land here)
+  let claudeHome: string; // isolated ~/.claude
+  let projectDir: string;
+  const settingsRel = "settings.json";
+
+  beforeAll(async () => {
+    docHome = await mkdtemp(join(tmpdir(), "agentlens-doctor-"));
+    claudeHome = await mkdtemp(join(tmpdir(), "al-doc-claude-smoke-"));
+    projectDir = await mkdtemp(join(tmpdir(), "al-doc-project-smoke-"));
+    // A parseable settings file with a hook lacking a timeout -> no-timeout
+    // finding (json-settings patch candidate). No bypass modes, no external
+    // transmission — so the generated patch must validate clean.
+    await writeFile(
+      join(claudeHome, settingsRel),
+      JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo hi" }] }],
+          },
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+    // No CLAUDE.md in the project -> missing-project finding (claude-md patch).
+    const init = runAgentlens(docHome, ["init"]);
+    expect(init.status).toBe(0);
+  });
+
+  afterAll(async () => {
+    await Promise.all([
+      rm(docHome, { recursive: true, force: true }).catch(() => undefined),
+      rm(claudeHome, { recursive: true, force: true }).catch(() => undefined),
+      rm(projectDir, { recursive: true, force: true }).catch(() => undefined),
+    ]);
+  });
+
+  /** Read the on-disk settings content (for "unchanged" assertions). */
+  async function readSettings(): Promise<string> {
+    return (await readFile(join(claudeHome, settingsRel))).toString("utf8");
+  }
+
+  it("doctor --help is non-interactive and exits 0", () => {
+    const r = runAgentlens(docHome, ["doctor", "--help"]);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("doctor");
+    expect(r.stdout).toContain("--dry-run");
+    expect(r.stdout).toContain("--fix");
+    expect(r.stdout).toContain("--yes");
+  });
+
+  it("doctor --dry-run --json reports findings + patches and writes nothing (§3.5)", async () => {
+    const beforeSettings = await readSettings();
+    const r = runAgentlens(docHome, [
+      "doctor",
+      "--dry-run",
+      "--json",
+      "--claude-home",
+      claudeHome,
+      "--project",
+      projectDir,
+    ]);
+    expect(r.status).toBe(0);
+    const report = JSON.parse(r.stdout) as {
+      findings: Array<{ family: string; id: string }>;
+      patches: Array<{
+        id: string;
+        kind: string;
+        refused: boolean;
+        automaticallyApplicable: boolean;
+        validation: {
+          noBypassPermissions: boolean;
+          noExternalTransmission: boolean;
+        };
+      }>;
+      summary: { total: number; patches: number };
+    };
+    expect(report.summary.total).toBeGreaterThanOrEqual(1);
+    const ids = report.findings.map((f) => f.id);
+    expect(ids.some((id) => id.startsWith("hooks:no-timeout"))).toBe(true);
+    expect(ids.some((id) => id.startsWith("instructions:missing-project"))).toBe(true);
+    // A non-refused json-settings patch exists for the no-timeout finding.
+    const js = report.patches.find((p) => p.kind === "json-settings" && !p.refused);
+    expect(js).toBeTruthy();
+    // §15.9: never auto-applies; never bypass / external transmission.
+    for (const p of report.patches) {
+      expect(p.automaticallyApplicable).toBe(false);
+      expect(p.validation.noBypassPermissions).toBe(true);
+      expect(p.validation.noExternalTransmission).toBe(true);
+    }
+    // --dry-run wrote nothing: settings file byte-identical, no CLAUDE.md created.
+    expect(await readSettings()).toBe(beforeSettings);
+    expect(existsSync(join(projectDir, "CLAUDE.md"))).toBe(false);
+  });
+
+  it("doctor --fix --json without --yes makes no changes (explicit consent required, §3.5)", async () => {
+    const beforeSettings = await readSettings();
+    const r = runAgentlens(docHome, [
+      "doctor",
+      "--fix",
+      "--json",
+      "--claude-home",
+      claudeHome,
+      "--project",
+      projectDir,
+    ]);
+    expect(r.status).toBe(0);
+    const payload = JSON.parse(r.stdout) as {
+      applied: unknown[];
+      note: string;
+    };
+    expect(payload.applied).toHaveLength(0);
+    expect(payload.note).toMatch(/--yes/);
+    // Nothing written.
+    expect(await readSettings()).toBe(beforeSettings);
+    expect(existsSync(join(projectDir, "CLAUDE.md"))).toBe(false);
+  });
+
+  it("doctor --fix --yes --json applies approved patches, backs up, and validates (§3.5, §15.9)", async () => {
+    const beforeSettings = await readSettings();
+    const r = runAgentlens(docHome, [
+      "doctor",
+      "--fix",
+      "--yes",
+      "--json",
+      "--claude-home",
+      claudeHome,
+      "--project",
+      projectDir,
+    ]);
+    expect(r.status).toBe(0);
+    const payload = JSON.parse(r.stdout) as {
+      applied: Array<{
+        applied: boolean;
+        backupPath?: string;
+        validation: {
+          parses: boolean;
+          noBypassPermissions: boolean;
+          noExternalTransmission: boolean;
+          unrelatedPreserved: boolean;
+        };
+      }>;
+    };
+    expect(payload.applied.length).toBeGreaterThanOrEqual(1);
+    for (const a of payload.applied) {
+      expect(a.applied).toBe(true);
+      expect(a.backupPath).toBeTruthy();
+      expect(a.validation.parses).toBe(true);
+      expect(a.validation.noBypassPermissions).toBe(true);
+      expect(a.validation.noExternalTransmission).toBe(true);
+      expect(a.validation.unrelatedPreserved).toBe(true);
+    }
+    // The settings file now carries a timeout; the project CLAUDE.md was created.
+    const afterSettings = await readSettings();
+    expect(afterSettings).toContain('"timeout": 2000');
+    expect(afterSettings).not.toEqual(beforeSettings);
+    expect(existsSync(join(projectDir, "CLAUDE.md"))).toBe(true);
+    // Backups live under the AgentLens home, never the Claude home.
+    expect(existsSync(join(docHome, "backups", "doctor"))).toBe(true);
+    expect(existsSync(join(claudeHome, "backups"))).toBe(false);
+  });
+});

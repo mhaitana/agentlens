@@ -136,6 +136,23 @@ export type {
 } from "./model-catalogue.js";
 
 export type {
+  DoctorScope,
+  DoctorCheckFamily,
+  DoctorSeverity,
+  DoctorFixability,
+  DoctorEvidence,
+  DoctorFinding,
+  PatchKind,
+  PatchValidation,
+  ProposedPatch,
+  GeneratedSkillDraft,
+  GeneratedHookDraft,
+  DoctorReport,
+  PatchApplicationResult,
+  RollbackResult,
+} from "./doctor.js";
+
+export type {
   RecommendationRule,
   RecommendationCandidate,
   AnalysisContext,
