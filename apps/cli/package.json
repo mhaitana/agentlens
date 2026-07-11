@@ -1,6 +1,6 @@
 {
   "name": "@mhaitana/agentlens",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "Local-first, privacy-first analytics & coaching for AI coding agents.",
   "type": "module",
