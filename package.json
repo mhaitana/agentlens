@@ -19,12 +19,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "github:agentlens/agentlens.git",
+    "url": "github:mhaitana/agentlens.git",
     "directory": "."
   },
-  "homepage": "https://github.com/agentlens/agentlens#readme",
+  "homepage": "https://github.com/mhaitana/agentlens#readme",
   "bugs": {
-    "url": "https://github.com/agentlens/agentlens/issues"
+    "url": "https://github.com/mhaitana/agentlens/issues"
   },
   "engines": {
     "node": ">=24.0.0"
@@ -40,7 +40,8 @@
     "test:e2e": "turbo run test:e2e",
     "clean": "turbo run clean && rm -rf node_modules",
     "changeset": "changeset",
-    "version-packages": "changeset version"
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.9",

@@ -37,18 +37,24 @@ const DEFAULT_PORT = 7531;
 
 /**
  * Resolve the built dashboard directory. Honours `AGENTLENS_DASHBOARD_DIR`;
- * otherwise defaults to the sibling `apps/dashboard/dist` relative to this
- * CLI module (repo-layout). Returns null if no bundle is present so the
- * command can fall back to API-only mode with a clear message.
+ * otherwise checks the vendored `<pkgroot>/dashboard` (published layout, copied
+ * by the prepack hook) then the sibling `apps/dashboard/dist` (dev repo layout).
+ * Returns null if no bundle is present so the command can fall back to
+ * API-only mode with a clear message.
  */
 export function resolveDashboardDir(): string | null {
   const override = process.env.AGENTLENS_DASHBOARD_DIR;
   if (override && existsSync(override)) return override;
-  // This file ships at apps/cli/dist/commands/dashboard.js; the dashboard
-  // bundle is at apps/dashboard/dist (sibling app).
+  // tsup emits a single file at <pkgroot>/dist/index.js, so `here` is
+  // <pkgroot>/dist in both the dev repo and the published package.
   const here = dirname(fileURLToPath(import.meta.url));
-  const candidate = join(here, "..", "..", "dashboard", "dist");
-  return existsSync(candidate) ? candidate : null;
+  // Published layout: the dashboard bundle is vendored at <pkgroot>/dashboard
+  // (copied by the prepack hook, apps/cli/scripts/vendor-dashboard.mjs).
+  const published = join(here, "..", "dashboard");
+  if (existsSync(published)) return published;
+  // Dev repo layout: apps/dashboard/dist (sibling app).
+  const dev = join(here, "..", "..", "dashboard", "dist");
+  return existsSync(dev) ? dev : null;
 }
 
 /** Open a URL in the user's default browser (cross-platform, best-effort). */

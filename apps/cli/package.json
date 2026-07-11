@@ -1,30 +1,72 @@
 {
-  "name": "@agentlens/cli",
+  "name": "@mhaitana/agentlens",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
+  "description": "Local-first, privacy-first analytics & coaching for AI coding agents.",
   "type": "module",
   "bin": {
     "agentlens": "./dist/index.js"
   },
   "main": "./dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "dashboard"
   ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github:mhaitana/agentlens.git",
+    "directory": "apps/cli"
+  },
+  "homepage": "https://github.com/mhaitana/agentlens#readme",
+  "bugs": {
+    "url": "https://github.com/mhaitana/agentlens/issues"
+  },
+  "keywords": [
+    "ai-agents",
+    "claude-code",
+    "analytics",
+    "local-first",
+    "privacy-first",
+    "opentelemetry",
+    "prompt-coaching",
+    "developer-tools",
+    "agent-analytics",
+    "cli"
+  ],
+  "author": "Matt Haitana",
+  "license": "MIT",
   "scripts": {
-    "build": "tsup src/index.ts --format esm --clean",
+    "build": "tsup",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run --passWithNoTests",
-    "test:integration": "vitest run src/cli.smoke.test.ts"
+    "test:integration": "vitest run src/cli.smoke.test.ts",
+    "prepack": "node scripts/vendor-dashboard.mjs"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "drizzle-orm": "^0.38.3",
+    "fastify": "^5.2.0",
+    "picocolors": "^1.1.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
     "@agentlens/analysis-engine": "workspace:*",
     "@agentlens/claude-adapter": "workspace:*",
     "@agentlens/config": "workspace:*",
     "@agentlens/database": "workspace:*",
     "@agentlens/domain": "workspace:*",
-    "@agentlens/local-api": "workspace:*",
     "@agentlens/hook-collector": "workspace:*",
+    "@agentlens/local-api": "workspace:*",
     "@agentlens/otel-receiver": "workspace:*",
     "@agentlens/prompt-coach": "workspace:*",
     "@agentlens/recommendations": "workspace:*",
@@ -32,14 +74,6 @@
     "@agentlens/reporting": "workspace:*",
     "@agentlens/shared": "workspace:*",
     "@agentlens/source-adapter": "workspace:*",
-    "cli-table3": "^0.6.5",
-    "commander": "^12.1.0",
-    "ora": "^8.1.1",
-    "picocolors": "^1.1.1",
-    "zod": "^3.24.1"
-  },
-  "license": "MIT",
-  "devDependencies": {
     "@agentlens/test-fixtures": "workspace:*",
     "@types/node": "^22.10.0",
     "tsup": "^8.3.5",

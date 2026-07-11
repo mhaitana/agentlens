@@ -8,6 +8,9 @@ build/
 .turbo/
 *.tsbuildinfo
 
+# Vendored dashboard bundle (created by apps/cli prepack hook at publish time)
+apps/cli/dashboard/
+
 # Test / coverage
 coverage/
 test-results/
@@ -49,9 +52,9 @@ EPCC_COMMIT.md
 epcc-features.json
 epcc-progress.md
 
-# Changesets
-.changeset/*.md
-!.changeset/README.md
+# Changesets — changeset files MUST be committed so the Release workflow
+# (changesets/action) can consume them and cut a version. (README.md is tracked
+# like any other file; do not ignore .changeset/*.md.)
 
 # Playwright (browsers pinned in-repo per §26 / user constraint)
 .playwright-browsers/

@@ -5,7 +5,7 @@
   "author": {
     "name": "AgentLens"
   },
-  "homepage": "https://github.com/agentlens/agentlens",
+  "homepage": "https://github.com/mhaitana/agentlens",
   "license": "MIT",
   "keywords": ["analytics", "observability", "claude-code", "local-first"]
 }

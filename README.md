@@ -61,7 +61,41 @@ You can purge everything with `agentlens privacy purge`, prune by retention with
 
 ## Installation
 
-Requirements: **Node.js ≥ 24** and **pnpm** (the repo pins `pnpm@10.33.0`).
+Requirements: **Node.js ≥ 24**.
+
+### From GitHub Packages (end users)
+
+AgentLens is published to the GitHub Packages npm registry as
+`@mhaitana/agentlens`. GitHub Packages requires authentication to install
+even for public packages, so there is a one-time setup:
+
+```bash
+# 1. Create a classic Personal Access Token at https://github.com/settings/tokens
+#    with the `read:packages` scope. (Fine-grained tokens are NOT supported by
+#    the GitHub Packages npm registry.)
+# 2. Authenticate npm to the @mhaitana scope:
+npm login --scope=@mhaitana --auth-type=legacy --registry=https://npm.pkg.github.com
+#    Username: <your-github-username>
+#    Password: <your-classic-PAT-with-read:packages>
+#    Email:    <optional>
+# 3. Install globally and run:
+npm install -g @mhaitana/agentlens
+agentlens --version
+```
+
+Alternatively, add the scope + token to a user-level `~/.npmrc` instead of
+`npm login`:
+
+```
+@mhaitana:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=<classic-PAT-with-read:packages>
+```
+
+then `npm install -g @mhaitana/agentlens`.
+
+### From source (development)
+
+Requires **pnpm** (the repo pins `pnpm@10.33.0`).
 
 ```bash
 pnpm install
@@ -71,7 +105,7 @@ pnpm build
 The `agentlens` CLI is built to `apps/cli/dist/index.js`. Link it globally:
 
 ```bash
-pnpm --filter @agentlens/cli build
+pnpm --filter @mhaitana/agentlens build
 npm link apps/cli   # makes `agentlens` available on your PATH
 # or run it directly:
 node apps/cli/dist/index.js --help

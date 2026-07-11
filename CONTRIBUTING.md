@@ -67,7 +67,7 @@ Requirements:
   will pick it up automatically)
 
 ```bash
-git clone github.com/agentlens/agentlens.git
+git clone github.com/mhaitana/agentlens.git
 cd agentlens
 pnpm install
 pnpm build          # turbo builds all packages/apps in dependency order
@@ -119,7 +119,7 @@ The CLI builds to `apps/cli/dist/index.js` (tsup, ESM). The `bin` field
 exposes `agentlens`:
 
 ```bash
-pnpm --filter @agentlens/cli build
+pnpm --filter @mhaitana/agentlens build
 node apps/cli/dist/index.js --help          # run directly
 npm link apps/cli                            # or put `agentlens` on your PATH
 ```
@@ -248,9 +248,19 @@ pnpm version-packages     # release time: consumes changesets, bumps versions,
                           # regenerates CHANGELOG.md
 ```
 
-`access: restricted`; `baseBranch: main`; `updateInternalDependencies: patch`;
-`agentlens-dashboard` is `private`/unreleased and ignored by changesets. The
-changelog targets `agentlens/agentlens`. See [`CHANGELOG.md`](./CHANGELOG.md).
+- Add a changeset on your feature PR (select `@mhaitana/agentlens`).
+- When the PR merges to `main`, the `Release` workflow
+  (`.github/workflows/release.yml`) uses `changesets/action` to open a
+  "Version Packages" PR that bumps versions and regenerates `CHANGELOG.md`.
+- Merging that Version PR publishes `@mhaitana/agentlens` to GitHub Packages
+  (`npm.pkg.github.com`) and tags the release. The `GITHUB_TOKEN` authenticates
+  (the `@mhaitana` scope matches the repo owner, so no PAT is needed to publish).
+
+Config: `access: public`; `baseBranch: main`; `updateInternalDependencies: patch`.
+`@agentlens/dashboard` and all internal `@agentlens/*` packages are
+`private: true` and therefore excluded from publishing by that flag (not by
+`ignore`). The changelog targets `mhaitana/agentlens`. See
+[`CHANGELOG.md`](./CHANGELOG.md).
 
 ---
 

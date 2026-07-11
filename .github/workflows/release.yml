@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Version / Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Publish-only .npmrc: scopes @mhaitana to GitHub Packages and authenticates with the
+      # auto GITHUB_TOKEN (scope matches repo owner, so it can publish). Not committed to the
+      # repo — a committed auth line with an unset token would break contributor installs.
+      - name: Configure GitHub Packages registry
+        run: |
+          printf '@mhaitana:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}\nalways-auth=true\n' > .npmrc
+
+      - name: Create Release Pull Request or Publish
+        uses: changesets/action@v1
+        with:
+          # `pnpm release` builds the workspace (dashboard + CLI) then runs `changeset publish`,
+          # which internally runs `pnpm publish -r --no-git-checks` (skipping private packages)
+          # and fires the `prepack` hook that vendors the dashboard into the CLI package.
+          publish: pnpm release
+          version: pnpm changeset version
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

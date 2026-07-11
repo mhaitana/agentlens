@@ -1,7 +1,7 @@
 # agentlens-claude
 
 An **observation-only** [Claude Code](https://code.claude.com) plugin that feeds
-Claude Code hook events to your **local** [AgentLens](https://github.com/agentlens/agentlens)
+Claude Code hook events to your **local** [AgentLens](https://github.com/mhaitana/agentlens)
 instance for analytics — with no account, no cloud, and no transmission of data
 off your machine.
 
