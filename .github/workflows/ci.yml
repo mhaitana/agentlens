@@ -78,9 +78,13 @@ jobs:
 
       - name: Install Playwright Chromium
         run: pnpm --filter @agentlens/dashboard exec playwright install --with-deps chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
 
       - name: Build
         run: pnpm build
 
       - name: Dashboard E2E tests
         run: pnpm test:e2e
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
