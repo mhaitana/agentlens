@@ -33,10 +33,16 @@ import {
   type IngestDeps,
   type SpooledEvent,
 } from "@agentlens/hook-collector";
-import { computeAnalytics, defaultRules, type RuleOverrides } from "@agentlens/analysis-engine";
+import {
+  computeAnalytics,
+  defaultRules,
+  buildModelCatalogue,
+  type RuleOverrides,
+} from "@agentlens/analysis-engine";
 import type { AgentLensConfig } from "@agentlens/config";
-import type { ReportFilters } from "@agentlens/domain";
+import type { ReportFilters, ModelCatalogueEntry } from "@agentlens/domain";
 import type { Database } from "@agentlens/database";
+import { buildConfigurationSummary } from "@agentlens/config";
 import type { RunningOtelReceiver } from "@agentlens/otel-receiver";
 
 /** Options for starting observation. */
@@ -113,6 +119,11 @@ export async function startObservation(opts: ObservationOptions): Promise<Observ
       privacyMode: opts.config.privacy.mode,
       rules: defaultRules(),
       ruleOverrides: opts.config.analysis.ruleOverrides as RuleOverrides,
+      modelCatalogue: buildModelCatalogue(
+        opts.config.analysis.modelCatalogue as ModelCatalogueEntry[],
+      ),
+      // §15.4 configuration-state summary for configuration-category rules.
+      configurationSummary: buildConfigurationSummary(opts.config),
       now: opts.now,
     });
     stats.analysisRuns++;

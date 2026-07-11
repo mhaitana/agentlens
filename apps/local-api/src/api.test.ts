@@ -231,12 +231,12 @@ describe("local-api /api/v1/* (M2-4)", () => {
     await server.close();
   });
 
-  it("GET /api/v1/rules lists all 16 rules enabled", async () => {
+  it("GET /api/v1/rules lists all default rules enabled", async () => {
     const server = await app();
     const res = await server.inject({ method: "GET", url: "/api/v1/rules" });
     expect(res.statusCode).toBe(200);
     const rules = res.json();
-    expect(rules).toHaveLength(16);
+    expect(rules).toHaveLength(34);
     expect(rules.every((r: { enabled: boolean }) => r.enabled)).toBe(true);
     expect(rules[0].id).toBe("TOOLS-001");
     await server.close();

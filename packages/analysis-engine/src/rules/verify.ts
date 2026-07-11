@@ -1,8 +1,8 @@
 /**
- * VERIFY-001..004 deterministic rules (spec §13.10).
+ * VERIFY-001..006 deterministic rules (spec §13.10, §15.4 verification quality).
  *
- * Verification-quality rules read the workflow metrics from the snapshot and
- * emit at most one candidate each. Conservative where the spec demands.
+ * Verification-quality rules read the workflow/tool metrics from the snapshot
+ * and emit at most one candidate each. Conservative where the spec demands.
  */
 import type { RecommendationRule } from "@agentlens/domain";
 import {
@@ -177,6 +177,100 @@ export function verify004(): RecommendationRule {
           ],
           remediation: instructionRemediation(
             "For cross-cutting changes, run a complementary verification step (e.g. add a typecheck or lint alongside tests).",
+          ),
+        }),
+      ];
+    },
+    explain(c) {
+      return c.summary;
+    },
+  };
+}
+
+/** VERIFY-005 No test runs despite code changes (§15.4 "no tests"). */
+export function verify005(): RecommendationRule {
+  return {
+    id: "VERIFY-005",
+    version: 1,
+    category: "verification",
+    defaultThresholds: { minSessions: 1 },
+    async evaluate(ctx) {
+      const testRuns = num(ctx.snapshot.tools.testCommandFrequency) ?? 0;
+      if (testRuns > 0) return [];
+      const noVerify = num(ctx.snapshot.workflow.sessionsWithChangesButNoVerification) ?? 0;
+      const totalSessions = ctx.snapshot.usage.totalSessions.value as number;
+      const min = threshold(ctx, "minSessions", 1);
+      // Only meaningful when there were sessions that changed code.
+      if (noVerify < min) return [];
+      const share = totalSessions > 0 ? noVerify / totalSessions : 0;
+      const confidence = Math.min(0.85, 0.5 + share * 0.3);
+      return [
+        candidate({
+          ctx,
+          ruleId: "VERIFY-005",
+          ruleVersion: 1,
+          category: "verification",
+          severity: "high",
+          confidence,
+          title: "No test runs despite code changes",
+          summary: `0 test runs in the window; ${noVerify} session(s) changed code without verification`,
+          explanation: `No recognised test command ran in the window while code was being changed. Tests are the most direct verification of behaviour; their complete absence means changes are landing without any behavioural check.`,
+          evidence: [
+            evidence("no-tests-with-changes", "No test runs while code changed", [
+              metric("testCommandFrequency", testRuns, "exact"),
+              metric("sessionsWithChangesButNoVerification", noVerify, "inferred"),
+              metric("totalSessions", totalSessions, "exact"),
+            ]),
+          ],
+          remediation: instructionRemediation(
+            "Run the project's test command after code changes; if no tests exist for the changed area, add at least one.",
+          ),
+        }),
+      ];
+    },
+    explain(c) {
+      return c.summary;
+    },
+  };
+}
+
+/** VERIFY-006 No build verification despite changes (§15.4 "no build"). */
+export function verify006(): RecommendationRule {
+  return {
+    id: "VERIFY-006",
+    version: 1,
+    category: "verification",
+    defaultThresholds: { minFilesPerSession: 3 },
+    async evaluate(ctx) {
+      const buildRuns = num(ctx.snapshot.tools.buildCommandFrequency) ?? 0;
+      if (buildRuns > 0) return [];
+      const filesPerSession = num(ctx.snapshot.workflow.filesChangedPerSession) ?? 0;
+      const noVerify = num(ctx.snapshot.workflow.sessionsWithChangesButNoVerification) ?? 0;
+      const minFiles = threshold(ctx, "minFilesPerSession", 3);
+      // Only meaningful for substantial change sets; conservative otherwise.
+      if (filesPerSession < minFiles) return [];
+      if (noVerify < 1) return [];
+      const confidence = Math.min(0.6, 0.35 + Math.min(1, filesPerSession / 8) * 0.2);
+      return [
+        candidate({
+          ctx,
+          ruleId: "VERIFY-006",
+          ruleVersion: 1,
+          category: "verification",
+          severity: "medium",
+          confidence,
+          title: "No build verification despite changes",
+          summary: `0 build runs; ~${filesPerSession.toFixed(1)} files changed/session`,
+          explanation: `No recognised build command ran while substantial changes were being made. For projects with a build step, skipping it means type or compile errors can land unobserved. This is conservative — not every project has a build step.`,
+          evidence: [
+            evidence("no-build-with-changes", "No build runs while substantial changes made", [
+              metric("buildCommandFrequency", buildRuns, "exact"),
+              metric("filesChangedPerSession", Number(filesPerSession.toFixed(2)), "inferred"),
+              metric("sessionsWithChangesButNoVerification", noVerify, "inferred"),
+            ]),
+          ],
+          remediation: instructionRemediation(
+            "If the project has a build/compile step, run it after substantial changes (or add a typecheck as a lighter alternative).",
           ),
         }),
       ];

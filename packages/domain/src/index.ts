@@ -41,6 +41,33 @@ export type {
 
 export type { Prompt, PromptFeatures } from "./prompt.js";
 
+export type {
+  PromptQualityDimensionKey,
+  PromptMissingComponent,
+  PromptQualityDimension,
+  PromptQualityEvidence,
+  SuggestedChange,
+  SuggestedStructure,
+  PromptQualityAssessment,
+  PromptOutcomeEvidence,
+  PromptComparison,
+  RepeatedTemplate,
+  CoachingGenerationSource,
+  RedactedPromptPayload,
+  CoachingCallOptions,
+  RedactedPromptAnalysisInput,
+  SemanticPromptAnalysis,
+  RedactedTaskClassificationInput,
+  TaskClassification,
+  RedactedRemediationInput,
+  GeneratedRemediation,
+  CoachingProvider,
+  CoachingDataCategory,
+  CoachingRequestDisclosure,
+  CoachingGatewayStatus,
+  CoachingGatewayResult,
+} from "./coaching.js";
+
 export type { ModelRequest, QuerySource } from "./model-request.js";
 
 export type {
@@ -68,6 +95,8 @@ export type {
   RemediationType,
 } from "./recommendation.js";
 
+export { defaultConfigurationSummary } from "./metrics.js";
+
 export type {
   ReportPeriod,
   ReportFilters,
@@ -77,6 +106,7 @@ export type {
   UsageMetrics,
   ToolBehaviourMetrics,
   WorkflowMetrics,
+  PromptMetrics,
   CostSummary,
   CompletenessSummary,
   CompletionSummary,
@@ -84,8 +114,26 @@ export type {
   SensitivePathFinding,
   RedactedSecretFinding,
   SecurityMetrics,
+  ConfigurationSummary,
   AnalyticsSnapshot,
 } from "./metrics.js";
+
+export type {
+  BaselineDimension,
+  SessionDataPoint,
+  BaselineStat,
+  BehaviouralBaseline,
+  BaselineDeviation,
+  SessionComparison,
+} from "./baseline.js";
+
+export type {
+  ModelCatalogue,
+  ModelCatalogueEntry,
+  CapabilityTier,
+  CostTier,
+  ContextClass,
+} from "./model-catalogue.js";
 
 export type {
   RecommendationRule,

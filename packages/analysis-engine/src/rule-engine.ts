@@ -20,6 +20,7 @@ import type {
   AnalysisContext,
   AnalyticsSnapshot,
   Confidence,
+  ModelCatalogue,
   RecommendationCandidate,
   RecommendationRule,
   ReportFilters,
@@ -95,6 +96,7 @@ export class RuleEngine {
     filters: ReportFilters,
     generatedAt: string,
     minimumConfidence: Confidence = 0,
+    modelCatalogue?: ModelCatalogue,
   ): Promise<RuleEngineResult> {
     const candidates: RecommendationCandidate[] = [];
     const consolidated: RecommendationCandidate[] = [];
@@ -112,7 +114,13 @@ export class RuleEngine {
         rule.defaultThresholds,
         this.thresholdOverrides.get(ruleId),
       );
-      const context: AnalysisContext = { snapshot, filters, thresholds, generatedAt };
+      const context: AnalysisContext = {
+        snapshot,
+        filters,
+        thresholds,
+        generatedAt,
+        modelCatalogue,
+      };
       let emitted: RecommendationCandidate[];
       try {
         emitted = await rule.evaluate(context);

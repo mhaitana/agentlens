@@ -291,11 +291,11 @@ describe("F003 rules smoke (spec §13.10, §26)", () => {
     }
   });
 
-  it("rules list enumerates all 16 rules", () => {
+  it("rules list enumerates all default rules", () => {
     const r = runAgentlens(ruleHome, ["rules", "list", "--json"]);
     expect(r.status).toBe(0);
     const list = JSON.parse(r.stdout) as Array<{ id: string; enabled: boolean }>;
-    expect(list).toHaveLength(16);
+    expect(list).toHaveLength(34);
     expect(list[0]?.id).toBe("TOOLS-001");
     expect(list.every((entry) => entry.enabled)).toBe(true);
   });

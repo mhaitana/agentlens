@@ -45,6 +45,30 @@ export const AnalysisConfig = z
   .object({
     minimumRecommendationConfidence: z.number().min(0).max(1),
     ruleOverrides: z.record(z.string(), z.unknown()),
+    /**
+     * User overrides for the §15.4 model catalogue. Each entry describes a
+     * model family in relative tiers (capability/cost/context class) and wins
+     * over the bundled default with the same id; entries with new ids add a
+     * model. Optional — defaults to no overrides.
+     */
+    modelCatalogue: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1),
+            matchPatterns: z.array(z.string().min(1)),
+            provider: z.string().min(1),
+            capabilityTier: z.number().int().min(1).max(5),
+            costTier: z.number().int().min(1).max(5),
+            contextClass: z.enum(["small", "medium", "large"]),
+            recommendedTaskClasses: z.array(z.string()),
+            effectiveFrom: z.string().optional(),
+            effectiveUntil: z.string().optional(),
+            notes: z.string().optional(),
+          })
+          .passthrough(),
+      )
+      .default([]),
   })
   .passthrough();
 
@@ -61,6 +85,20 @@ export const ExternalAnalysisConfig = z
     enabled: z.boolean().default(false),
     provider: z.enum(["none", "deterministic", "openai-compatible", "local-model"]).default("none"),
     model: z.string().nullable().default(null),
+    /**
+     * Base URL of an external/local analysis endpoint (e.g.
+     * `https://api.openai.com/v1` or `http://127.0.0.1:11434/v1`). Required for
+     * the openai-compatible and local-model providers; ignored otherwise.
+     */
+    endpoint: z.string().url().nullable().default(null),
+    /**
+     * Name of the environment variable holding the API key for an
+     * openai-compatible provider (e.g. `OPENAI_API_KEY`). The key itself is
+     * NEVER stored in config — only the variable name, which the runtime reads
+     * on demand (§3.2: never persist API keys/auth headers). Ignored for the
+     * local-model provider (no key) and the none/deterministic providers.
+     */
+    apiKeyEnv: z.string().nullable().default(null),
   })
   .passthrough();
 
@@ -139,6 +177,7 @@ export function defaultConfig(): AgentLensConfig {
     analysis: {
       minimumRecommendationConfidence: 0.65,
       ruleOverrides: {},
+      modelCatalogue: [],
     },
     dashboard: {
       host: "127.0.0.1",
@@ -149,6 +188,8 @@ export function defaultConfig(): AgentLensConfig {
       enabled: false,
       provider: "none",
       model: null,
+      endpoint: null,
+      apiKeyEnv: null,
     },
     telemetry: {
       enabled: false,

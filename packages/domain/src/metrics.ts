@@ -118,6 +118,31 @@ export interface WorkflowMetrics {
   narrowVerificationOnlySessions: ProvenancedValue<number>;
 }
 
+/**
+ * §15.4 prompt-effectiveness aggregates. Derived from the persisted per-prompt
+ * structural features (§10.4 {@link PromptFeatures}) so prompt-effectiveness
+ * rules and the dashboard consume normalised data, never raw prompt text. Every
+ * count is a provenanced value; the underlying features are heuristic.
+ */
+export interface PromptMetrics {
+  /** Total prompts in the window (exact, from session prompt counts). */
+  totalPrompts: ProvenancedValue<number>;
+  /** Median prompt character length (heuristic). */
+  medianLength: ProvenancedValue<number | null>;
+  /** Prompts that appear to begin a new task (sequence === 1). */
+  beginsNewTaskCount: ProvenancedValue<number>;
+  /** Prompts referencing acceptance criteria (heuristic keyword match). */
+  referencesAcceptanceCriteriaCount: ProvenancedValue<number>;
+  /** Prompts requesting verification (heuristic keyword match). */
+  requestsVerificationCount: ProvenancedValue<number>;
+  /** Prompts containing multiple independent tasks (heuristic). */
+  multipleIndependentTasksCount: ProvenancedValue<number>;
+  /** Prompts with vague/ambiguous references (heuristic pronoun count). */
+  vagueReferenceCount: ProvenancedValue<number>;
+  /** Prompts with no detected file/code reference (heuristic). */
+  missingFileReferenceCount: ProvenancedValue<number>;
+}
+
 /** Cost summary with the derivation chain (§13.6). */
 export interface CostSummary {
   totalUsd: ProvenancedValue<number | null>;
@@ -195,6 +220,57 @@ export interface SecurityMetrics {
   redactedSecretFindings: RedactedSecretFinding[];
 }
 
+/**
+ * §15.4 "Security and configuration" — a provider-neutral summary of the
+ * AgentLens configuration state that configuration-category rules read. It
+ * describes *config state* (never secrets) so rules can flag overly broad
+ * retention/exclusions, network binding beyond loopback, or external analysis
+ * enabled without safeguards. Claude-Code-settings-derived signals (broad read
+ * permissions, broad shell allow, dangerous auto-approval, untrusted MCP) are
+ * doctor-scope (§15.13) and intentionally not represented here.
+ *
+ * The analysis-engine never imports the config package; callers build this
+ * summary from the resolved {@link AgentLensConfig} and pass it via
+ * `ComputeAnalyticsOptions.configurationSummary` (mirroring how the model
+ * catalogue is threaded). An absent summary yields neutral defaults so rules
+ * stay silent rather than guess.
+ */
+export interface ConfigurationSummary {
+  /** Active privacy mode. */
+  privacyMode: "metadata-only" | "redacted-content" | "full-local";
+  /** Configured retention window in days. */
+  retentionDays: number;
+  /** Number of excluded project patterns. */
+  excludedProjectCount: number;
+  /** True when any exclusion pattern looks overly broad (wildcard or very short). */
+  broadExclusions: boolean;
+  /** Dashboard/API bind host. */
+  dashboardHost: string;
+  /** True when the dashboard binds beyond the loopback interface. */
+  bindsBeyondLoopback: boolean;
+  /** Whether external analysis is enabled. */
+  externalAnalysisEnabled: boolean;
+  /** External analysis provider id (e.g. "none", "deterministic", "openai-compatible"). */
+  externalAnalysisProvider: string;
+  /** True when an external (non-local, non-deterministic) provider is enabled. */
+  externalAnalysisExternal: boolean;
+}
+
+/** Neutral default configuration summary (rules stay silent on unknown state). */
+export function defaultConfigurationSummary(): ConfigurationSummary {
+  return {
+    privacyMode: "redacted-content",
+    retentionDays: 90,
+    excludedProjectCount: 0,
+    broadExclusions: false,
+    dashboardHost: "127.0.0.1",
+    bindsBeyondLoopback: false,
+    externalAnalysisEnabled: false,
+    externalAnalysisProvider: "none",
+    externalAnalysisExternal: false,
+  };
+}
+
 /** The full analytics snapshot a report renders. */
 export interface AnalyticsSnapshot {
   generatedAt: string;
@@ -203,12 +279,16 @@ export interface AnalyticsSnapshot {
   usage: UsageMetrics;
   tools: ToolBehaviourMetrics;
   workflow: WorkflowMetrics;
+  /** §15.4 prompt-effectiveness aggregates (heuristic features). */
+  prompt: PromptMetrics;
   cost: CostSummary;
   completeness: CompletenessSummary;
   completion: CompletionSummary;
   scanProvenance: ScanProvenanceSummary;
   /** Security-behaviour findings (§13.10 SECURITY-001/002). */
   security: SecurityMetrics;
+  /** §15.4 configuration-state summary (read by configuration-category rules). */
+  configuration: ConfigurationSummary;
   /** Recommendations produced by the rule engine (empty until M2 rules land). */
   recommendations: Recommendation[];
   /** The confidence floor used to filter recommendations. */

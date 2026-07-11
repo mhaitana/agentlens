@@ -9,14 +9,15 @@
 import { Command } from "commander";
 import pc from "picocolors";
 import { writeFile } from "node:fs/promises";
-import type { ReportFilters, ReportPeriod } from "@agentlens/domain";
-import { computeAnalytics, defaultRules } from "@agentlens/analysis-engine";
+import type { ReportFilters, ReportPeriod, ModelCatalogueEntry } from "@agentlens/domain";
+import { computeAnalytics, defaultRules, buildModelCatalogue } from "@agentlens/analysis-engine";
 import type { RuleOverrides } from "@agentlens/analysis-engine";
 import { renderReport, COST_ESTIMATE_LABEL, type ReportFormat } from "@agentlens/reporting";
 import { redactPath } from "@agentlens/redaction";
 import { ProjectRepo } from "@agentlens/database";
 import { resolveHome, openAgentLensDb, closeDatabase, loadConfig } from "../context.js";
 import { buildPrivacy } from "../import/index.js";
+import { buildConfigurationSummary } from "@agentlens/config";
 
 const PERIODS: ReportPeriod[] = ["day", "week", "month", "all"];
 
@@ -76,6 +77,12 @@ export function makeReportCommand(): Command {
           // Config overrides are a loose record; the engine tolerates partial /
           // unknown shapes (it only reads `enabled` and `thresholds`).
           ruleOverrides: config.analysis.ruleOverrides as RuleOverrides,
+          // §15.4 model catalogue (user overrides merged over bundled defaults).
+          modelCatalogue: buildModelCatalogue(
+            config.analysis.modelCatalogue as ModelCatalogueEntry[],
+          ),
+          // §15.4 configuration-state summary for configuration-category rules.
+          configurationSummary: buildConfigurationSummary(config),
         });
 
         const rendered = renderReport(snapshot, format);

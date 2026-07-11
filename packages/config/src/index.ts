@@ -27,6 +27,8 @@ export {
   type ValidationResult,
 } from "./config.js";
 
+export { buildConfigurationSummary } from "./configuration-summary.js";
+
 export {
   resolveAgentLensHome,
   configPath,

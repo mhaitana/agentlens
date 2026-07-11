@@ -38,6 +38,10 @@ import {
   type UsageMetrics,
   type ToolBehaviourMetrics,
   type WorkflowMetrics,
+  type PromptMetrics,
+  type ModelCatalogue,
+  type ConfigurationSummary,
+  defaultConfigurationSummary,
 } from "@agentlens/domain";
 import { computeCostSummary, type CostRequestRow } from "./cost.js";
 import { createRuleEngine, type RuleOverrides } from "./rule-engine.js";
@@ -118,6 +122,19 @@ export interface ComputeAnalyticsOptions {
   rules?: RecommendationRule[];
   /** Per-rule enable/disable + threshold overrides resolved at run time. */
   ruleOverrides?: RuleOverrides;
+  /**
+   * Resolved model catalogue (defaults + user overrides) for model-selection
+   * rules (§15.4). When omitted, rules fall back to the bundled default
+   * catalogue.
+   */
+  modelCatalogue?: ModelCatalogue;
+  /**
+   * Resolved AgentLens configuration summary (§15.4) for configuration-category
+   * rules. When omitted, a neutral default is used so those rules stay silent
+   * rather than guess. Built by callers from the resolved config (the
+   * analysis-engine never imports the config package).
+   */
+  configurationSummary?: ConfigurationSummary;
 }
 
 interface ResolvedWindow {
@@ -226,6 +243,9 @@ export async function computeAnalytics(
     promptRows,
   );
 
+  // --- Prompt effectiveness (§15.4) -------------------------------------
+  const prompt = computePromptMetrics(promptRows);
+
   // --- Completeness + completion ----------------------------------------
   const completeness = computeCompletenessSummary(sessionRows);
   const completion = computeCompletionSummary(sessionRows);
@@ -244,6 +264,7 @@ export async function computeAnalytics(
     usage,
     tools,
     workflow,
+    prompt,
     cost: {
       totalUsd: costResult.total,
       byModel: costResult.byModel,
@@ -253,6 +274,7 @@ export async function computeAnalytics(
     completion,
     scanProvenance,
     security,
+    configuration: options.configurationSummary ?? defaultConfigurationSummary(),
     recommendations: [],
     minimumRecommendationConfidence: options.minimumRecommendationConfidence,
   };
@@ -270,6 +292,7 @@ export async function computeAnalytics(
       filters,
       generatedAt,
       options.minimumRecommendationConfidence,
+      options.modelCatalogue,
     );
     const generated = await generateRecommendations(db, result.candidates, {
       minimumConfidence: options.minimumRecommendationConfidence,
@@ -809,6 +832,55 @@ function exactOrUnknown(value: number | null): ProvenancedValue<number | null> {
   return exact(value);
 }
 
+/**
+ * §15.4 prompt-effectiveness aggregates from persisted per-prompt features.
+ *
+ * The features were extracted deterministically at import time (§10.4, via
+ * `@agentlens/prompt-coach`) and stored as JSON on each prompt row. Older
+ * imports may predate some feature fields — those are treated as `false`/`0`
+ * (the heuristic was not run), which is the honest interpretation. All counts
+ * are labelled "heuristic" because the underlying feature extraction is
+ * heuristic; the total is "exact" (from session prompt counts).
+ */
+function computePromptMetrics(promptRows: (typeof schema.prompts.$inferSelect)[]): PromptMetrics {
+  const totalPrompts = promptRows.length;
+
+  let beginsNewTask = 0;
+  let refAcceptance = 0;
+  let reqVerify = 0;
+  let multiTask = 0;
+  let vague = 0;
+  let missingFileRef = 0;
+  const lengths: number[] = [];
+
+  for (const p of promptRows) {
+    const f = p.features as Partial<Record<string, unknown>> | null;
+    const bool = (key: string): boolean => Boolean(f && f[key]);
+    const numField = (key: string): number =>
+      typeof f?.[key] === "number" ? (f[key] as number) : 0;
+
+    if (bool("beginsNewTask")) beginsNewTask += 1;
+    if (bool("referencesAcceptanceCriteria")) refAcceptance += 1;
+    if (bool("requestsVerification")) reqVerify += 1;
+    if (bool("multipleIndependentTasks")) multiTask += 1;
+    vague += numField("ambiguousReferenceCount");
+    if (numField("fileReferenceCount") === 0 && p.characterCount > 0) missingFileRef += 1;
+    if (p.characterCount > 0) lengths.push(p.characterCount);
+  }
+
+  const heuristicNote = "Deterministic structural feature extraction (§15.5)";
+  return {
+    totalPrompts: exact(totalPrompts),
+    medianLength: durationPv(median(lengths), lengths.length > 0 ? "inferred" : "unknown"),
+    beginsNewTaskCount: inferred(beginsNewTask, heuristicNote),
+    referencesAcceptanceCriteriaCount: inferred(refAcceptance, heuristicNote),
+    requestsVerificationCount: inferred(reqVerify, heuristicNote),
+    multipleIndependentTasksCount: inferred(multiTask, heuristicNote),
+    vagueReferenceCount: inferred(vague, heuristicNote),
+    missingFileReferenceCount: inferred(missingFileRef, heuristicNote),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Security metrics (§13.10 SECURITY-001/002)
 // ---------------------------------------------------------------------------
@@ -1050,6 +1122,16 @@ function emptySnapshot(
       medianTimeToFirstEditMs: unknownNum,
       medianTimeBetweenFinalEditAndVerificationMs: unknownNum,
     },
+    prompt: {
+      totalPrompts: zero,
+      medianLength: unknownNum,
+      beginsNewTaskCount: zero,
+      referencesAcceptanceCriteriaCount: zero,
+      requestsVerificationCount: zero,
+      multipleIndependentTasksCount: zero,
+      vagueReferenceCount: zero,
+      missingFileReferenceCount: zero,
+    },
     cost: {
       totalUsd: unknown<number | null>("No model usage in this window."),
       byModel: [],
@@ -1065,6 +1147,7 @@ function emptySnapshot(
     completion: { total: 0, completed: 0, interrupted: 0, failed: 0, unknown: 0 },
     scanProvenance: { sourceId: "unknown", importedSessions: 0, skippedSessions: 0 },
     security: { sensitivePathAccess: [], redactedSecretFindings: [] },
+    configuration: options.configurationSummary ?? defaultConfigurationSummary(),
     recommendations: [],
     minimumRecommendationConfidence: options.minimumRecommendationConfidence,
   };

@@ -47,7 +47,12 @@ import {
 } from "@agentlens/database";
 import { redactPath } from "@agentlens/redaction";
 import { databasePath, configPath } from "@agentlens/config";
-import { getConfigValue, setConfigValue, saveConfig } from "@agentlens/config";
+import {
+  getConfigValue,
+  setConfigValue,
+  saveConfig,
+  buildConfigurationSummary,
+} from "@agentlens/config";
 import { registerHookIngestRoutes } from "@agentlens/hook-collector";
 
 const PERIODS = ["day", "week", "month", "all"] as const;
@@ -300,6 +305,8 @@ export function registerRoutes(app: FastifyInstance, deps: ServerDeps): void {
       privacyMode: config.privacy.mode,
       rules: defaultRules(),
       ruleOverrides: config.analysis.ruleOverrides as RuleOverrides,
+      // §15.4 configuration-state summary for configuration-category rules.
+      configurationSummary: buildConfigurationSummary(config),
       now: deps.now,
     });
   });

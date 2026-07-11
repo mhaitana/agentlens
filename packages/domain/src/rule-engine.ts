@@ -19,6 +19,7 @@ import type {
   Remediation,
 } from "./recommendation.js";
 import type { AnalyticsSnapshot, ReportFilters } from "./metrics.js";
+import type { ModelCatalogue } from "./model-catalogue.js";
 
 /** Scope a rule's finding attaches to. */
 export interface RuleScope {
@@ -59,6 +60,12 @@ export interface AnalysisContext {
   thresholds: RuleThresholds;
   /** ISO timestamp the snapshot was generated; deterministic per run. */
   generatedAt: string;
+  /**
+   * Resolved model catalogue (defaults + user overrides) for model-selection
+   * rules (§15.4). Optional — rules that don't need it ignore it; model rules
+   * fall back to a bundled default when absent.
+   */
+  modelCatalogue?: ModelCatalogue;
 }
 
 /** A versioned, independently-testable rule. */

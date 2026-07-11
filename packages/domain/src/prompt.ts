@@ -41,6 +41,12 @@ export interface PromptFeatures {
   fileReferenceCount: number;
   /** Ambiguous-pronoun / vague-reference count. */
   ambiguousReferenceCount: number;
+  /** Contains scope-bounding markers ("only", "just", "limit to", …). */
+  hasScopeMarkers: boolean;
+  /** Appears to reverse prior work (undo/revert/rollback), any sequence. */
+  appearsReversal: boolean;
+  /** Deterministic complexity proxy in [0,1] (heuristic structural density). */
+  complexityScore: number;
   /** Character length (mirrors parent for quick scoring). */
   length: number;
 }

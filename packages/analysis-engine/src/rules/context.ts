@@ -99,3 +99,102 @@ export function context002(): RecommendationRule {
     },
   };
 }
+
+/** CONTEXT-003 Excessive stale context (high cache-read share + compaction). */
+export function context003(): RecommendationRule {
+  return {
+    id: "CONTEXT-003",
+    version: 1,
+    category: "context",
+    defaultThresholds: { minCacheReadShare: 0.6, minCompactions: 1 },
+    async evaluate(ctx) {
+      const cacheRead = num(ctx.snapshot.usage.cacheReadTokens) ?? 0;
+      const input = num(ctx.snapshot.usage.inputTokens) ?? 0;
+      const compactions = num(ctx.snapshot.usage.totalCompactions) ?? 0;
+      const minShare = threshold(ctx, "minCacheReadShare", 0.6);
+      const minCompactions = threshold(ctx, "minCompactions", 1);
+      const totalInput = cacheRead + input;
+      if (totalInput === 0) return [];
+      const cacheReadShare = cacheRead / totalInput;
+      if (cacheReadShare < minShare || compactions < minCompactions) return [];
+      const confidence = Math.min(0.7, 0.4 + Math.min(1, cacheReadShare) * 0.3);
+      return [
+        candidate({
+          ctx,
+          ruleId: "CONTEXT-003",
+          ruleVersion: 1,
+          category: "context",
+          severity: "low",
+          confidence,
+          title: "Excessive stale context",
+          summary: `${(cacheReadShare * 100).toFixed(0)}% of input tokens were cache reads with ${compactions} compaction(s)`,
+          explanation: `A large share of input tokens came from the prompt cache alongside compaction. This suggests stale context is being carried and re-summariesed rather than refreshed. Starting a focused session or trimming always-on context reduces this.`,
+          evidence: [
+            evidence("stale-context", "High cache-read share with compaction", [
+              metric("cacheReadTokens", cacheRead, "reported"),
+              metric("inputTokens", input, "reported"),
+              metric("cacheReadShare", Number(cacheReadShare.toFixed(2)), "inferred"),
+              metric("compactions", compactions, "exact"),
+            ]),
+          ],
+          remediation: instructionRemediation(
+            "Start a fresh session for a new objective and trim always-on context (skills, large files, persistent outputs).",
+          ),
+        }),
+      ];
+    },
+    explain(c) {
+      return c.summary;
+    },
+  };
+}
+
+/** CONTEXT-004 Verbose exploration producing large context (delegatable). */
+export function context004(): RecommendationRule {
+  return {
+    id: "CONTEXT-004",
+    version: 1,
+    category: "context",
+    defaultThresholds: { minReads: 12, minSearches: 6, maxFilesChanged: 2 },
+    async evaluate(ctx) {
+      const repeatedReads = ctx.snapshot.tools.repeatedReads;
+      const repeatedSearches = ctx.snapshot.tools.repeatedSearches;
+      const readOccurrences = repeatedReads.reduce((a, r) => a + r.occurrences, 0);
+      const searchOccurrences = repeatedSearches.reduce((a, r) => a + r.occurrences, 0);
+      const minReads = threshold(ctx, "minReads", 12);
+      const minSearches = threshold(ctx, "minSearches", 6);
+      const maxFiles = threshold(ctx, "maxFilesChanged", 2);
+      const filesChanged = num(ctx.snapshot.workflow.filesChangedPerSession) ?? 0;
+      if (readOccurrences < minReads && searchOccurrences < minSearches) return [];
+      if (filesChanged > maxFiles) return [];
+      const total = readOccurrences + searchOccurrences;
+      const confidence = Math.min(0.65, 0.35 + Math.min(1, total / (minReads + minSearches)) * 0.3);
+      return [
+        candidate({
+          ctx,
+          ruleId: "CONTEXT-004",
+          ruleVersion: 1,
+          category: "context",
+          severity: "low",
+          confidence,
+          title: "Verbose exploration",
+          summary: `${readOccurrences} repeated reads + ${searchOccurrences} repeated searches, ${filesChanged} file(s) changed`,
+          explanation: `A lot of exploration (reads/searches) produced context but very few files changed. The exploration could often be delegated to a subagent or scoped to a tighter question so the main context stays clean.`,
+          evidence: [
+            evidence("verbose-exploration", "High exploration volume, low change volume", [
+              metric("repeatedReadOccurrences", readOccurrences, "exact"),
+              metric("repeatedSearchOccurrences", searchOccurrences, "exact"),
+              metric("filesChangedPerSession", filesChanged, "inferred"),
+            ]),
+          ],
+          remediation: instructionRemediation(
+            "Delegate broad exploration to a subagent and bring back only the conclusion, or scope the question to a single entry point.",
+          ),
+        }),
+      ];
+    },
+    explain(c) {
+      return c.summary;
+    },
+  };
+}

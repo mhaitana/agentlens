@@ -1,6 +1,7 @@
 import { sha256 } from "@agentlens/shared";
 import { eq, schema, type Database } from "@agentlens/database";
 import { redactText, redactPath, redactCommand } from "@agentlens/redaction";
+import { extractPromptFeatures } from "@agentlens/prompt-coach";
 import type { NormalisedSourceEvent, ToolCallEvent } from "@agentlens/source-adapter";
 import type { ImportPrivacy } from "./privacy.js";
 import type { ReconstructedSession } from "./reconstruct.js";
@@ -91,7 +92,7 @@ export async function persistSession(input: PersistInput): Promise<PersistResult
         const stored = privacy.storeContent
           ? redactText(event.content, privacy.options).redacted
           : null;
-        const features = promptFeatures(event.content, event.sequence);
+        const features = extractPromptFeatures(event.content, event.sequence);
         promptRows.push({
           id: `${sessionId}:p:${event.sequence}`,
           sessionId,
@@ -100,7 +101,7 @@ export async function persistSession(input: PersistInput): Promise<PersistResult
           redactedContent: stored,
           contentHash: event.contentHash,
           characterCount: event.content.length,
-          approximateTokenCount: features.approximateTokenCount,
+          approximateTokenCount: Math.ceil(event.content.length / 4),
           features,
         });
         counts.prompts++;
@@ -473,72 +474,4 @@ function redactCommandRow(
 function toolCallId(sourceId: string, event: ToolCallEvent): string {
   if (event.toolUseId) return `tc:${sourceId}:${event.toolUseId}`;
   return `tc:${sourceId}:t:${event.timestamp.toISOString()}`;
-}
-
-// ---------------------------------------------------------------------------
-// Prompt feature extraction (deterministic, heuristic — refined in F005).
-// ---------------------------------------------------------------------------
-
-const IMPERATIVE_VERBS = new Set([
-  "add",
-  "fix",
-  "create",
-  "update",
-  "remove",
-  "delete",
-  "implement",
-  "refactor",
-  "write",
-  "build",
-  "test",
-  "run",
-  "check",
-  "ensure",
-  "make",
-  "move",
-  "rename",
-  "change",
-  "set",
-  "configure",
-  "install",
-  "deploy",
-  "migrate",
-  "extract",
-]);
-
-interface PromptFeatures {
-  characterCount: number;
-  approximateTokenCount: number;
-  fileReferenceCount: number;
-  imperativeVerbCount: number;
-  beginsNewTask: boolean;
-}
-
-function promptFeatures(content: string, sequence: number): PromptFeatures {
-  const characterCount = content.length;
-  // Heuristic token estimate: ~4 chars/token (labelled "estimated" downstream).
-  const approximateTokenCount = Math.ceil(characterCount / 4);
-
-  // Count backtick spans that look like paths (contain "/" or an extension).
-  const codeSpans = content.match(/`[^`\n]+`/g) ?? [];
-  const fileReferenceCount = codeSpans.filter((s) => /[./]/.test(s)).length;
-
-  // Count lines whose first word is an imperative verb.
-  let imperativeVerbCount = 0;
-  for (const line of content.split(/\n/)) {
-    const first = line
-      .trim()
-      .split(/\s+/)[0]
-      ?.toLowerCase()
-      .replace(/[^a-z]/g, "");
-    if (first && IMPERATIVE_VERBS.has(first)) imperativeVerbCount++;
-  }
-
-  return {
-    characterCount,
-    approximateTokenCount,
-    fileReferenceCount,
-    imperativeVerbCount,
-    beginsNewTask: sequence === 1,
-  };
 }

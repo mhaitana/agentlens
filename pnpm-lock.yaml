@@ -68,6 +68,9 @@ importers:
       '@agentlens/otel-receiver':
         specifier: workspace:*
         version: link:../../packages/otel-receiver
+      '@agentlens/prompt-coach':
+        specifier: workspace:*
+        version: link:../../packages/prompt-coach
       '@agentlens/recommendations':
         specifier: workspace:*
         version: link:../../packages/recommendations

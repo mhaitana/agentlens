@@ -1,9 +1,9 @@
 # Recommendation rules
 
-AgentLens ships 16 deterministic recommendation rules (spec §13.10). Each rule
-is versioned, threshold-overridable, produces deterministic confidence, and
-carries structured evidence plus a remediation that is **never applied
-automatically** (§3.5 safe remediation — every remediation has
+AgentLens ships 34 deterministic recommendation rules (spec §13.10, §15.4).
+Each rule is versioned, threshold-overridable, produces deterministic
+confidence, and carries structured evidence plus a remediation that is **never
+applied automatically** (§3.5 safe remediation — every remediation has
 `automaticallyApplicable: false`). Recommendations are persisted with stable
 ids derived from a finding fingerprint, so a re-run is idempotent: the same
 evidence yields the same recommendations, and a recommendation is superseded only
@@ -11,13 +11,24 @@ when the evidence changes (§15.1, §15.2).
 
 ## Categories
 
-| Category     | Rules             | Concern                    |
-| ------------ | ----------------- | -------------------------- |
-| tools        | TOOLS-001..006    | Tool/command efficiency    |
-| verification | VERIFY-001..004   | Verification discipline    |
-| workflow     | WORKFLOW-001..002 | Workflow friction          |
-| context      | CONTEXT-001..002  | Context efficiency         |
-| security     | SECURITY-001..002 | Sensitive access / secrets |
+| Category      | Rules             | Concern                                 |
+| ------------- | ----------------- | --------------------------------------- |
+| tools         | TOOLS-001..008    | Tool/command efficiency                 |
+| verification  | VERIFY-001..006   | Verification discipline                 |
+| workflow      | WORKFLOW-001..004 | Workflow friction                       |
+| context       | CONTEXT-001..004  | Context efficiency                      |
+| prompt        | PROMPT-001..005   | Prompt effectiveness                    |
+| model         | MODEL-001..003    | Model selection (relative tiers)        |
+| security      | SECURITY-001..002 | Sensitive access / secrets              |
+| configuration | CONFIG-001..002   | AgentLens config / local-first boundary |
+
+Model-selection rules compare usage against a **configurable model catalogue**
+(§15.4) of relative capability/cost/context tiers — they never assert a
+permanent "model X is best/cheapest" claim, and stay silent on unknown models
+(§3.4 honest metrics). Configuration rules read a provider-neutral
+`ConfigurationSummary` threaded from the resolved AgentLens config (never
+secrets); Claude-Code-settings-derived signals (broad permissions, MCP) are
+doctor-scope (§15.13).
 
 ## How confidence is computed
 
@@ -119,6 +130,22 @@ evidence)`. Two candidates with the same fingerprint consolidate; re-running
   `filesChangedPerSession` ≤ `maxFilesChanged` (default 2).
 - **Remediation:** narrow exploration or delegate broad sweeps to a subagent.
 
+## TOOLS-007 Repeated unchanged searches
+
+- **Severity:** low · **Category:** tools
+- **Fires when:** the same search (tool + input) recurs ≥ `minOccurrences`
+  (default 3) without a query change (§15.4 duplicate searches).
+- **Remediation:** run a search once and retain the result, or refine the query.
+
+## TOOLS-008 Repeatedly failing tool
+
+- **Severity:** medium · **Category:** tools
+- **Fires when:** a tool (often an MCP server) has failure rate ≥
+  `minFailureRate` (default 0.5) and ≥ `minFailures` (default 2) failures
+  (§15.4 unused or failing MCP tools).
+- **Remediation:** check the failing tool/MCP config, or stop invoking it for
+  unsupported tasks.
+
 ## VERIFY-001 No verification after code changes
 
 - **Severity:** high · **Category:** verification
@@ -146,6 +173,23 @@ evidence)`. Two candidates with the same fingerprint consolidate; re-running
   paths) but used only one verification kind.
 - **Remediation:** add a complementary verification step (e.g. typecheck/lint).
 
+## VERIFY-005 No test runs despite code changes
+
+- **Severity:** high · **Category:** verification
+- **Fires when:** no recognised test command ran in the window while ≥
+  `minSessions` (default 1) changed code without verification (§15.4 "no tests").
+- **Remediation:** run the project's test command after changes; add a test if
+  none cover the changed area.
+
+## VERIFY-006 No build verification despite changes
+
+- **Severity:** medium · **Category:** verification (conservative)
+- **Fires when:** no recognised build command ran while `filesChangedPerSession`
+  ≥ `minFilesPerSession` (default 3) and unverified sessions exist (§15.4 "no
+  build").
+- **Remediation:** run the build/compile step after substantial changes (or add
+  a typecheck as a lighter alternative).
+
 ## WORKFLOW-001 Excessive corrective turns
 
 - **Severity:** medium · **Category:** workflow
@@ -162,6 +206,24 @@ evidence)`. Two candidates with the same fingerprint consolidate; re-running
   3 600 000 ms = 1 h) and prompts/session ≥ `minPromptsPerSession` (default 6).
 - **Remediation:** split long multi-task sessions into focused sessions.
 
+## WORKFLOW-003 Large changes without verification
+
+- **Severity:** medium · **Category:** workflow
+- **Fires when:** `filesChangedPerSession` ≥ `minFilesPerSession` (default 5)
+  and ≥ `minSessions` (default 2) changed code without verification (§15.4 large
+  changes without planning indicators).
+- **Remediation:** pair large changesets with a stated plan and a verification
+  step.
+
+## WORKFLOW-004 Repeated manual validation suitable for a hook
+
+- **Severity:** low · **Category:** workflow
+- **Fires when:** test + build command runs ≥ `minRuns` (default 8) across ≥
+  `minSessions` (default 3) — deterministic validation run frequently by hand
+  (§15.4).
+- **Remediation:** consider a Claude Code PostToolUse hook that runs the
+  dominant verification automatically (AgentLens `doctor` can draft this).
+
 ## CONTEXT-001 Frequent compaction
 
 - **Severity:** medium · **Category:** context
@@ -174,6 +236,90 @@ evidence)`. Two candidates with the same fingerprint consolidate; re-running
 - **Fires when:** largest output ≥ `minOutputBytes` (default 100 000) and
   repeated command groups ≥ `minRepeatedCommands` (default 1).
 - **Remediation:** summarise/page large outputs before they enter context.
+
+## CONTEXT-003 Excessive stale context
+
+- **Severity:** low · **Category:** context
+- **Fires when:** cache-read share of input ≥ `minCacheReadShare` (default 0.6)
+  and total compactions ≥ `minCompactions` (default 1) — stale context carried
+  and re-summarised (§15.4).
+- **Remediation:** start a fresh focused session; trim always-on context.
+
+## CONTEXT-004 Verbose exploration
+
+- **Severity:** low · **Category:** context
+- **Fires when:** repeated reads ≥ `minReads` (default 12), repeated searches ≥
+  `minSearches` (default 6), and `filesChangedPerSession` ≤ `maxFilesChanged`
+  (default 2) — exploration that could be delegated (§15.4).
+- **Remediation:** delegate broad exploration to a subagent to keep the main
+  context focused.
+
+## PROMPT-001 Prompts rarely state acceptance criteria
+
+- **Severity:** medium · **Category:** prompt
+- **Fires when:** ≥ `minPrompts` (default 4) prompts and the share referencing
+  acceptance criteria ≤ `maxCriteriaShare` (default 0.2). Heuristic, from
+  per-prompt structural features (§15.5).
+- **Remediation:** add a one-line acceptance criterion to task prompts.
+
+## PROMPT-002 Prompts rarely request verification
+
+- **Severity:** low · **Category:** prompt
+- **Fires when:** ≥ `minPrompts` (default 4) prompts and the share requesting
+  verification ≤ `maxVerifyShare` (default 0.2). Heuristic.
+- **Remediation:** append an explicit verification request to implementation
+  prompts.
+
+## PROMPT-003 Multiple independent tasks per prompt
+
+- **Severity:** medium · **Category:** prompt
+- **Fires when:** ≥ `minMultiTask` (default 3) prompts bundle several
+  independent tasks at ≥ `minShare` (default 0.3). Heuristic.
+- **Remediation:** split bundled objectives into one task per prompt.
+
+## PROMPT-004 Vague references in prompts
+
+- **Severity:** low · **Category:** prompt
+- **Fires when:** ≥ `minVague` (default 4) vague references ("this", "the
+  issue") at ≥ `minPerPrompt` (default 0.5) per prompt. Heuristic.
+- **Remediation:** replace open references with the concrete target (path,
+  symbol, behaviour).
+
+## PROMPT-005 Repeated user corrections
+
+- **Severity:** medium · **Category:** prompt
+- **Fires when:** corrective prompts ≥ `minCorrective` (default 3) at ≥
+  `minShare` (default 0.2) of total prompts. Heuristic + corrective-turn count.
+- **Remediation:** state objective, scope and acceptance criteria up front.
+
+## MODEL-001 High-cost model used for light work
+
+- **Severity:** low · **Category:** model
+- **Fires when:** the dominant model is in a high relative cost tier (≥
+  `minCostTier`, default 4) with `toolCallsPerSession` ≤ `maxToolCallsPerSession`
+  (default 6) and ≥ `minRequests` (default 3) requests. Tiers are relative +
+  configurable (§15.4); silent on unknown models.
+- **Remediation:** use a lower-cost-tier model for mechanical/light work.
+
+## MODEL-002 Lower-capability model struggling
+
+- **Severity:** medium · **Category:** model
+- **Fires when:** the dominant model is in a low relative capability tier (≤
+  `maxCapabilityTier`, default 2) with tool failure rate ≥ `minFailureRate`
+  (default 0.3) or repeated failed commands ≥ `minFailedCommands` (default 2).
+  Tiers are relative + configurable.
+- **Remediation:** for complex tasks failing repeatedly, consider a
+  higher-capability-tier model, then step back down.
+
+## MODEL-003 Stale context sent to a premium model
+
+- **Severity:** low · **Category:** model
+- **Fires when:** the dominant model is in a high capability tier (≥
+  `minCapabilityTier`, default 4) with cache-read share ≥ `minCacheReadShare`
+  (default 0.6) and ≥ `minRequests` (default 3) requests. Tiers are relative +
+  configurable.
+- **Remediation:** start a fresh focused session for premium-tier work, or carry
+  stale context on a lower-cost tier.
 
 ## SECURITY-001 Sensitive path access
 
@@ -198,6 +344,24 @@ evidence)`. Two candidates with the same fingerprint consolidate; re-running
   stored, so no finding is produced.
 - **Remediation:** do not paste API keys/tokens/credentials into prompts; use
   environment variables or an approved secrets mechanism.
+
+## CONFIG-001 Overly broad retention or exclusions
+
+- **Severity:** medium (high when `privacyMode` is `full-local`) · **Category:** configuration
+- **Fires when:** the AgentLens config uses `full-local` mode, retention >
+  `maxRetentionDays` (default 365), or broad/many exclusions (≥ `minExclusions`
+  default 5, or a wildcard/very-short pattern) (§15.4).
+- **Privacy:** the summary describes config state only — never secrets.
+- **Remediation:** lower retention, prefer `redacted-content` mode, narrow
+  exclusions to specific project paths.
+
+## CONFIG-002 Local-first boundary weakened
+
+- **Severity:** high · **Category:** configuration
+- **Fires when:** the dashboard binds beyond loopback, or external analysis is
+  enabled with a non-deterministic provider (local or remote model) (§15.4).
+- **Remediation:** prefer `127.0.0.1` for the dashboard host and keep external
+  analysis disabled unless the §15.5 redaction + opt-in safeguards are reviewed.
 
 ## Testing
 

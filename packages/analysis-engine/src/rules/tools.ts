@@ -1,5 +1,5 @@
 /**
- * TOOLS-001..006 deterministic rules (spec §13.10).
+ * TOOLS-001..008 deterministic rules (spec §13.10, §15.4 tool efficiency).
  *
  * Each rule reads the normalised tool-behaviour metrics from the snapshot and
  * emits at most one candidate (the most significant finding). Confidence is a
@@ -280,6 +280,112 @@ export function tools006(): RecommendationRule {
           ],
           remediation: instructionRemediation(
             "Narrow exploration with targeted search, or delegate broad sweeps to a subagent so the main context stays focused.",
+          ),
+        }),
+      ];
+    },
+    explain(c) {
+      return c.summary;
+    },
+  };
+}
+
+/** TOOLS-007 Repeated unchanged searches (§15.4 duplicate searches). */
+export function tools007(): RecommendationRule {
+  return {
+    id: "TOOLS-007",
+    version: 1,
+    category: "tools",
+    defaultThresholds: { minOccurrences: 3 },
+    async evaluate(ctx) {
+      const rows = ctx.snapshot.tools.repeatedSearches;
+      if (rows.length === 0) return [];
+      const min = threshold(ctx, "minOccurrences", 3);
+      const top = rows[0];
+      if (!top || top.occurrences < min) return [];
+      const confidence = confidenceForCount(top.occurrences, 0.45, 0.07, 0.8);
+      return [
+        candidate({
+          ctx,
+          ruleId: "TOOLS-007",
+          ruleVersion: 1,
+          category: "tools",
+          severity: "low",
+          confidence,
+          title: "Repeated unchanged searches",
+          summary: `Search "${top.label}" run ${top.occurrences}× across ${top.sessions} session(s)`,
+          explanation: `The same search (tool + input) recurred without a change in query. Re-searching suggests the result was not retained or the query was not narrowed. Repeating an identical search rarely yields new information.`,
+          evidence: [
+            evidence("repeated-search", `Search "${top.label}" run ${top.occurrences} times`, [
+              metric("occurrences", top.occurrences, "exact"),
+              metric("sessions", top.sessions, "exact"),
+            ]),
+          ],
+          remediation: instructionRemediation(
+            "Run a search once and keep its result, or refine the query instead of re-running the identical search.",
+          ),
+        }),
+      ];
+    },
+    explain(c) {
+      return c.summary;
+    },
+  };
+}
+
+/** TOOLS-008 Repeatedly failing tool (§15.4 unused or failing MCP tools). */
+export function tools008(): RecommendationRule {
+  return {
+    id: "TOOLS-008",
+    version: 1,
+    category: "tools",
+    defaultThresholds: { minFailureRate: 0.5, minFailures: 2 },
+    async evaluate(ctx) {
+      const tools = ctx.snapshot.tools.mostUsedTools;
+      if (tools.length === 0) return [];
+      const minRate = threshold(ctx, "minFailureRate", 0.5);
+      const minFailures = threshold(ctx, "minFailures", 2);
+      // Pick the tool with the most failures that still exceeds the rate floor.
+      let worst: { toolName: string; calls: number; failures: number; failureRate: number } | null =
+        null;
+      for (const t of tools) {
+        if (t.failureRate < minRate) continue;
+        if (t.failures < minFailures) continue;
+        if (!worst || t.failures > worst.failures) {
+          worst = {
+            toolName: t.toolName,
+            calls: t.calls,
+            failures: t.failures,
+            failureRate: t.failureRate,
+          };
+        }
+      }
+      if (!worst) return [];
+      const confidence = Math.min(
+        0.8,
+        0.4 + Math.min(1, worst.failures / (minFailures * 2)) * 0.35,
+      );
+      return [
+        candidate({
+          ctx,
+          ruleId: "TOOLS-008",
+          ruleVersion: 1,
+          category: "tools",
+          severity: "medium",
+          confidence,
+          title: "Repeatedly failing tool",
+          summary: `Tool "${worst.toolName}" failed ${worst.failures}/${worst.calls}× (${(worst.failureRate * 100).toFixed(0)}% failure rate)`,
+          explanation: `A tool — often an MCP server — failed a large share of the times it was called. Repeated MCP failures usually indicate a misconfigured or unavailable server, or a tool that is not appropriate for the task. Continuing to call it wastes turns.`,
+          evidence: [
+            evidence("failing-tool", `Tool "${worst.toolName}" with high failure rate`, [
+              metric("toolName", worst.toolName, "exact"),
+              metric("calls", worst.calls, "exact"),
+              metric("failures", worst.failures, "exact"),
+              metric("failureRate", Number(worst.failureRate.toFixed(2)), "exact"),
+            ]),
+          ],
+          remediation: instructionRemediation(
+            "Check the failing tool/MCP server configuration and availability, or stop invoking it for tasks it does not support.",
           ),
         }),
       ];
