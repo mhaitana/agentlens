@@ -26,16 +26,5 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     css: false,
-    server: {
-      deps: {
-        inline: [
-          "@exodus/bytes",
-          "html-encoding-sniffer",
-          "data-urls",
-          "whatwg-mimetype",
-          "whatwg-url",
-        ],
-      },
-    },
   },
 });
