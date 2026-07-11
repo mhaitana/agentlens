@@ -63,12 +63,19 @@ Final verification gates before declaring done (§26): `pnpm format:check && pnp
 
 ## What AgentLens is
 
-A **local-first, privacy-first analytics and coaching tool for Claude Code**. It reads Claude Code transcripts/hooks/telemetry from the user's machine, reconstructs sessions, computes metrics, and produces **evidence-backed recommendations** (not generic advice) plus a Configuration Doctor that can propose — but never silently apply — patches. Claude Code is the first supported source; the domain model must stay provider-neutral so other coding agents can be added later.
+A **local-first, privacy-first analytics and coaching tool for AI coding agents**.
+It reads transcripts/hooks/telemetry from the user's machine, reconstructs
+sessions, computes metrics, and produces **evidence-backed recommendations** (not
+generic advice) plus a Configuration Doctor that can propose — but never silently
+apply — patches. **Claude Code is the first supported source**; the domain model
+must stay provider-neutral so other coding agents can be added later.
 
 Three phases, which must be implemented in order:
 
 - **Phase 1** — Read-only analytics MVP: transcript discovery, streaming JSONL parser, incremental indexing, session reconstruction, analytics, ≥16 deterministic recommendation rules, CLI reports, dashboard. Must work with zero hooks/telemetry configured.
-- **Phase 2** — Live observation: a Claude Code plugin + observation-only hooks, spool fallback, a local OTLP receiver, `integrate`/`telemetry` commands, SSE-driven live dashboard.
+- **Phase 2** — Live observation: a Claude Code plugin (the first adapter plugin)
+  - observation-only hooks, spool fallback, a local OTLP receiver,
+    `integrate`/`telemetry` commands, SSE-driven live dashboard.
 - **Phase 3** — Coaching & Configuration Doctor: baselines, expanded rules, deterministic Prompt Coach, optional external coaching-provider interface (disabled by default), `doctor` command with safe patch generation/backups/rollback, generated skill & hook drafts.
 
 Phase 3 acceptance is gated by explicit checklists in §13.11, §14.11, §15.13. Definition of Done is §25: a fresh `pnpm install && pnpm build && agentlens init && agentlens scan && agentlens report --period week && agentlens dashboard` workflow works end-to-end.
@@ -79,7 +86,7 @@ Phase 3 acceptance is gated by explicit checklists in §13.11, §14.11, §15.13.
 - **Privacy-first.** Require an explicit scan/integration action; never silently upload; redact before persistence and before logging; support project exclusions, metadata-only analysis, configurable retention, and complete local deletion. Never store full source-file contents, full shell environments, API keys, or auth headers. Never commit real transcripts or private usage data to this repo.
 - **Evidence before advice.** Every recommendation must carry structured, queryable evidence (e.g. "file read six times without an edit"). No "write better prompts" hand-waving.
 - **Honest metrics.** Distinguish exact vs. reported vs. inferred vs. estimated vs. heuristic vs. unknown. Never present an estimate as official billing data; label cost "Estimated — not an official billing value."
-- **Safe remediation.** No changes to Claude Code settings/hooks/skills/agents/permissions/project files without explicit approval. Every remediation must: show diff → explain impact → name target file → back up → require approval → validate → support rollback.
+- **Safe remediation.** No changes to coding-agent settings/hooks/skills/agents/permissions/project files without explicit approval. Every remediation must: show diff → explain impact → name target file → back up → require approval → validate → support rollback.
 - **Extensible source architecture.** Dashboard/analysis code must never consume raw Claude transcript shapes directly — only normalised domain events via the `SourceAdapter` interface (§11).
 
 ## Technology stack (§5)

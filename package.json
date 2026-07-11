@@ -2,7 +2,7 @@
   "name": "agentlens",
   "version": "0.0.0",
   "private": true,
-  "description": "Local-first, privacy-first analytics & coaching for Claude Code.",
+  "description": "Local-first, privacy-first analytics & coaching for AI coding agents.",
   "type": "module",
   "packageManager": "pnpm@10.33.0",
   "license": "MIT",

@@ -1,7 +1,10 @@
 # Contributing to AgentLens
 
 Thanks for considering a contribution to AgentLens — a local-first,
-privacy-first analytics and coaching tool for Claude Code.
+privacy-first analytics and coaching tool for AI coding agents. Claude Code is
+the first supported source; the provider-neutral `SourceAdapter` interface makes
+it possible to add other agents without touching the dashboard or analysis
+engine.
 
 The authoritative specification is
 [`agentlens-glm-5.2-build-prompt.md`](./agentlens-glm-5.2-build-prompt.md).
@@ -20,13 +23,13 @@ the relevant spec section before any non-trivial change.
 AgentLens is a TypeScript ESM monorepo (pnpm workspaces + Turborepo): a CLI, a
 loopback Fastify API, and a Vite/React dashboard, backed by SQLite (Drizzle).
 
-The **one boundary you must not breach**: only `packages/claude-adapter` may
-know Claude Code's transcript / hook / telemetry shapes.
-`packages/domain` + `packages/source-adapter` are **provider-neutral**. The
-dashboard, `analysis-engine`, `recommendations`, `prompt-coach`, and
-`reporting` consume **normalised domain events only** — never raw Claude
-structures. If you find yourself importing a Claude-shaped type outside
-`claude-adapter`, stop and rework against the domain model.
+The **one boundary you must not breach**: only adapter packages (currently
+`packages/claude-adapter`) may know a provider's raw transcript / hook /
+telemetry shapes. `packages/domain` + `packages/source-adapter` are
+**provider-neutral**. The dashboard, `analysis-engine`, `recommendations`,
+`prompt-coach`, and `reporting` consume **normalised domain events only** —
+never raw Claude structures. If you find yourself importing a Claude-shaped
+type outside `claude-adapter`, stop and rework against the domain model.
 
 Full package map, data flows (transcript import / hook capture / telemetry),
 and Mermaid diagrams: [`docs/architecture.md`](./docs/architecture.md).
@@ -209,13 +212,13 @@ evidence changes.
 
 ## 6. Adding a source adapter (other coding agents)
 
-Claude Code is the first supported source; the domain model is
-provider-neutral so others can be added later. A new adapter implements the
-`SourceAdapter` interface from `packages/source-adapter` and emits normalised
-domain events (see `packages/domain`). It lives in its own package
+The architecture is provider-neutral: every adapter implements the `SourceAdapter`
+interface from `packages/source-adapter` and emits normalised domain events
+(see `packages/domain`). A new adapter lives in its own package
 (e.g. `packages/<provider>-adapter`) and **only that package** may know the
 provider's raw shapes. Dashboard, analysis, and reporting consume the
-normalised events unchanged.
+normalised events unchanged, so Claude Code is the first supported source but
+not the only one that can exist.
 
 ---
 

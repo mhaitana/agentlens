@@ -1,12 +1,14 @@
 # AgentLens
 
-> Local-first, privacy-first analytics and coaching for Claude Code.
+> Local-first, privacy-first analytics and coaching for AI coding agents.
 
-AgentLens reads Claude Code transcripts, hooks, and OpenTelemetry telemetry from
-**your own machine**, reconstructs sessions, computes metrics, and produces
+AgentLens reads transcripts, hooks, and OpenTelemetry telemetry from **your own
+machine**, reconstructs sessions, computes metrics, and produces
 **evidence-backed recommendations** — not generic advice. It also includes a
-Configuration Doctor that can _propose_ patches to your Claude Code settings, but
-never applies anything without your explicit approval.
+Configuration Doctor that can _propose_ patches to your coding-agent settings,
+but never applies anything without your explicit approval. **Claude Code is the
+first supported source**; the provider-neutral `SourceAdapter` interface lets
+other agents be added without touching the dashboard or analysis engine.
 
 Everything runs locally. There is no account, no cloud database, no hosted
 backend, no authentication, no AgentLens telemetry, and no transmission of your
@@ -23,11 +25,12 @@ transcripts anywhere by default. The local API binds to `127.0.0.1` only.
   times with no intervening edit") with structured, queryable evidence — every
   recommendation links to the behaviour that triggered it.
 - **Live observation.** An observation-only Claude Code plugin + hooks, a spool
-  fallback, a local OTLP receiver, and an SSE-driven live dashboard.
+  fallback, a local OTLP receiver, and an SSE-driven live dashboard. (More
+  adapter plugins can follow the same pattern.)
 - **Coaching.** A deterministic Prompt Coach (no external model by default),
   personal/project baselines, and a configurable model catalogue expressed only
   in relative capability/cost tiers.
-- **Configuration Doctor.** Detects risky Claude Code config (broad permissions,
+- **Configuration Doctor.** Detects risky coding-agent config (broad permissions,
   no-timeout hooks, stale MCP servers) and generates patches you review, back
   up, approve, and can roll back.
 
@@ -80,7 +83,7 @@ node apps/cli/dist/index.js --help
 
 ```bash
 agentlens init                        # choose a privacy mode, create config + DB
-agentlens scan                        # import Claude Code sessions locally
+agentlens scan                        # import coding-agent sessions locally
 agentlens report --period week        # terminal analytics report
 agentlens dashboard                   # open the local dashboard in a browser
 ```
@@ -90,7 +93,7 @@ Useful follow-ups:
 ```bash
 agentlens status                       # counts + privacy mode + paths
 agentlens rules list                   # browse the 34 recommendation rules
-agentlens doctor --dry-run             # preview Claude Code config findings
+agentlens doctor --dry-run             # preview coding-agent config findings
 agentlens integrate claude-code --status   # check the optional plugin
 agentlens telemetry status             # check the optional OTLP receiver
 agentlens privacy status               # what's stored + retention
@@ -145,7 +148,9 @@ provenance.
 
 `AGENTLENS_HOME` overrides the data home on every platform. `AGENTLENS_CLAUDE_HOME`
 overrides the Claude Code config directory the Doctor inspects (useful for tests
-and dry-runs that must not touch your real `~/.claude`).
+and dry-runs that must not touch your real `~/.claude`). The variable name is
+Claude-specific because that is the first adapter; future adapters will use
+their own override paths.
 
 ---
 
@@ -189,9 +194,10 @@ paths**.
   never failing an entire scan. Undocumented fields are treated as unstable.
 - Token and cost figures are **estimates** derived from transcript-reported
   fields, never official billing data, and never a guarantee of savings.
-- Only Claude Code is supported as a source in these phases. The domain model and
-  `SourceAdapter` interface are provider-neutral so other coding agents can be
-  added, but none ship yet.
+- Only Claude Code is supported as a source in these phases, because the
+  `claude-adapter` is the first `SourceAdapter` implementation. The domain model
+  and `SourceAdapter` interface are provider-neutral so other coding agents can
+  be added without changing the dashboard or analysis engine, but none ship yet.
 - No cloud sync, accounts, team dashboards, or mobile apps (intentionally out of
   scope). See [§24 of the build prompt](agentlens-glm-5.2-build-prompt.md).
 - Dashboard is the browser UI (no Tauri/Electron packaging in these phases).

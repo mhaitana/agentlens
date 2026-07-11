@@ -40,7 +40,7 @@ Refs: epcc-features.json#F00X
 - Does this change expose a new API endpoint? If so, is it loopback-only and
   protected against browser-origin abuse?
 - Does this change affect safe remediation (`automaticallyApplicable`)? It must
-  remain `false`.
+  remain `false` for any coding-agent adapter.
 
 ## Related issues
 
