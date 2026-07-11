@@ -41,6 +41,14 @@ pnpm-debug.log*
 !.vscode/extensions.json
 .idea/
 
+# EPCC workflow tracking files (local only — not part of the project source)
+EPCC_EXPLORE.md
+EPCC_PLAN.md
+EPCC_CODE.md
+EPCC_COMMIT.md
+epcc-features.json
+epcc-progress.md
+
 # Changesets
 .changeset/*.md
 !.changeset/README.md
