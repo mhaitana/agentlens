@@ -2,13 +2,64 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Status: spec-driven, greenfield
+## Status: spec-driven, implemented (Phases 1–3)
 
-This project is defined by **`agentlens-glm-5.2-build-prompt.md`** at the repo root. That document is the authoritative source of truth — every architectural decision, package boundary, CLI command, privacy rule, and acceptance criterion below derives from it. When the spec and anything else disagree, the spec wins. Re-read the relevant section of the build prompt before making non-trivial decisions.
+This project is defined by **`agentlens-glm-5.2-build-prompt.md`** at the repo root. That document is the authoritative source of truth — every architectural decision, package boundary, CLI command, privacy rule, and acceptance criterion derives from it. When the spec and anything else disagree, the spec wins. Re-read the relevant section of the build prompt before making non-trivial decisions.
 
-The directory currently contains only that spec; implementation is to be built from scratch following the phase order in §23. Treat the build prompt's engineering-behaviour section (§4) as standing instructions: work autonomously, maintain a working build at every stage, leave no placeholder/fake/mock code in production, and run format → lint → typecheck → tests → build → CLI smoke at the end of each major stage.
+All three phases are implemented and committed (feature work tracked as F001–F009; see `IMPLEMENTATION_REPORT.md` for an honest §27-style pass/fail summary and `epcc-progress.md` for the build log). The §4 engineering-behaviour rules remain standing instructions: maintain a working build at every stage, leave no placeholder/fake/mock code in production, and run format → lint → typecheck → tests → build → CLI smoke at the end of each major stage.
 
 Note: this project does **not** use the Next.js/Expo stack described in the parent workspace `CLAUDE.md`. AgentLens is a local-first TypeScript monorepo with a CLI, a Fastify local API, and a Vite/React dashboard.
+
+## Commands
+
+All commands run from the repo root. Package manager is **pnpm** (repo pins `pnpm@10.33.0`); Node ≥ 20.11. Tasks are orchestrated by Turborepo (`turbo run <task>` via the root scripts), which respects `^build` dependencies — building a package first builds its workspace deps.
+
+```bash
+pnpm install                 # install workspace deps
+pnpm build                   # turbo run build  (builds all packages/apps in dep order)
+pnpm lint                    # turbo run lint
+pnpm typecheck               # turbo run typecheck
+pnpm test                    # turbo run test  (vitest unit, --passWithNoTests)
+pnpm test:integration        # turbo run test:integration
+pnpm test:e2e                # turbo run test:e2e  (Playwright, dashboard)
+pnpm format                  # prettier --write
+pnpm format:check            # prettier --check  (used in §26 gates)
+```
+
+Work on a single package by filtering (`@agentlens/<name>`):
+
+```bash
+pnpm --filter @agentlens/analysis-engine build
+pnpm --filter @agentlens/analysis-engine test
+pnpm --filter @agentlens/analysis-engine lint
+```
+
+Run a single test file or test name (bypass the turbo `test` wrapper, which swallows extra args):
+
+```bash
+pnpm --filter @agentlens/analysis-engine exec vitest run src/rules/rules.test.ts
+pnpm --filter @agentlens/analysis-engine exec vitest run -t "TOOLS-001"
+pnpm --filter @agentlens/analysis-engine exec vitest run --watch src/rules/rules.test.ts
+```
+
+The CLI is built to `apps/cli/dist/index.js` (tsup, ESM). The `bin` field exposes `agentlens`:
+
+```bash
+pnpm --filter @agentlens/cli build
+node apps/cli/dist/index.js --help          # run directly
+npm link apps/cli                            # or put `agentlens` on your PATH
+```
+
+CLI smoke / fixture run in an isolated temp home (mirror of §26 — never point this at your real `~/.claude`):
+
+```bash
+AGENTLENS_HOME="$(mktemp -d)" node apps/cli/dist/index.js init
+agentlens scan --path ./packages/test-fixtures/claude-code
+agentlens report --period month
+agentlens doctor --dry-run
+```
+
+Final verification gates before declaring done (§26): `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm build && pnpm test:e2e`, then the CLI smoke above. Report exact pass/fail honestly (§27).
 
 ## What AgentLens is
 
@@ -68,6 +119,10 @@ docs/                architecture/, privacy/, rules/, troubleshooting/
 ```
 
 Key boundary: **`packages/domain` + `packages/source-adapter` define the neutral contracts; `claude-adapter` is the only package that knows Claude's shapes.** Dashboard, analysis, and reporting depend only on normalised domain events.
+
+### Recommendation rule engine
+
+`packages/analysis-engine/src/rules/` holds the 34 deterministic rules, split by category file (`tools.ts`, `verify.ts`, `workflow.ts`, `context.ts`, `prompt.ts`, `model.ts`, `security.ts`, `configuration.ts`) and aggregated by `defaultRules()` in `rules/index.ts` (`TOOLS-001`..`008`, `VERIFY-001`..`006`, `WORKFLOW-001`..`004`, `CONTEXT-001`..`004`, `PROMPT-001`..`005`, `MODEL-001`..`003`, `SECURITY-001`..`002`, `CONFIG-001`..`002`). Each rule is a `RecommendationRule` with a stable `id` + `version`, `defaultThresholds`, a deterministic `evaluate(ctx)` that emits at most one candidate (most significant finding), an evidence builder, an explanation, and a remediation. Thresholds are overridable via config (not by editing rules); confidence is a deterministic function of the evidence. Shared builders live in `helpers.ts` (`candidate`, `threshold`, `confidenceForCount`, `evidence`, `metric`, `num`). Tests are co-located in `rules.test.ts`; human docs in `docs/rules.md`. Add a new rule by appending a factory to its category file, exporting it from `rules/index.ts` into `defaultRules()`, and adding a test — never consume raw Claude shapes in a rule; read from the normalised `ctx.snapshot`.
 
 ## Local data & privacy (§7, §8)
 
