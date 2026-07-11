@@ -149,6 +149,39 @@ and dry-runs that must not touch your real `~/.claude`).
 
 ---
 
+## Dashboard
+
+The dashboard is a local-only browser UI (no cloud account, no hosted backend)
+driven by the loopback Fastify API. These screenshots were generated from
+synthetic fixtures, so they contain **no real prompts, transcripts, or project
+paths**.
+
+### Overview
+
+![AgentLens dashboard overview showing aggregate usage and honest cost caveat](docs/img/overview.png)
+
+### Sessions
+
+![Sessions list showing reconstructed local sessions](docs/img/sessions.png)
+
+### Session detail
+
+![Session detail with reconstructed timeline](docs/img/session-detail.png)
+
+### Recommendations
+
+![Recommendations list showing TOOLS-001 with structured evidence](docs/img/recommendations.png)
+
+### Coaching
+
+![Coaching view with deterministic Prompt Coach](docs/img/coaching.png)
+
+### Configuration Doctor
+
+![Configuration Doctor showing read-only findings and safe patch proposal](docs/img/doctor.png)
+
+---
+
 ## Known limitations
 
 - Transcript/hook/telemetry fields are partially undocumented and version-dependent.
@@ -167,6 +200,9 @@ and dry-runs that must not touch your real `~/.claude`).
 
 ## Development setup
 
+Requirements: **Node.js ≥ 20.11** and **pnpm 10.33.0** (the repo pins it via
+`packageManager`; `corepack enable` will pick it up).
+
 ```bash
 pnpm install                 # install workspace deps
 pnpm build                   # turbo build all packages
@@ -178,11 +214,55 @@ pnpm test:integration        # integration tests
 pnpm test:e2e                # Playwright E2E (dashboard); browsers pinned in-repo
 ```
 
+### Per-package work
+
+```bash
+pnpm --filter @agentlens/analysis-engine build
+pnpm --filter @agentlens/analysis-engine test
+pnpm --filter @agentlens/analysis-engine lint
+```
+
+### Run a single test
+
+The turbo `test` wrapper is `vitest run --passWithNoTests` and swallows extra
+arguments. Bypass it with `exec`:
+
+```bash
+pnpm --filter @agentlens/analysis-engine exec vitest run src/rules/rules.test.ts
+pnpm --filter @agentlens/analysis-engine exec vitest run -t "TOOLS-001"
+pnpm --filter @agentlens/analysis-engine exec vitest run --watch src/rules/rules.test.ts
+```
+
+### Before a PR: the §26 gate
+
+A change is not done until this sequence is green:
+
+```bash
+pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && \
+  pnpm test:integration && pnpm build && pnpm test:e2e
+```
+
+Then run the CLI smoke in an **isolated temp home** — never point it at your
+real `~/.claude`:
+
+```bash
+HOME_TMP="$(mktemp -d)"
+AGENTLENS_HOME="$HOME_TMP/al" node apps/cli/dist/index.js init
+agentlens scan --path ./packages/test-fixtures/claude-code
+agentlens report --period month
+agentlens doctor --dry-run
+```
+
 See [`docs/architecture.md`](docs/architecture.md) for the package map and data
 flow, [`docs/rules.md`](docs/rules.md) for the rule catalogue,
 [`docs/troubleshooting.md`](docs/troubleshooting.md) for common issues, and
 [`SECURITY.md`](SECURITY.md) for the threat model and reporting guidance.
 
-The authoritative specification is
+## Contributing
+
+We welcome contributions. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) for
+setup, architecture boundaries, the "add a recommendation rule" recipe, commit
+and changeset conventions, the hard privacy rules, and the PR checklist. The
+authoritative specification is
 [`agentlens-glm-5.2-build-prompt.md`](agentlens-glm-5.2-build-prompt.md). When the
 spec and anything in this repo disagree, the spec wins.
