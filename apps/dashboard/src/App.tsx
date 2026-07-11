@@ -15,6 +15,8 @@ import { SessionsList } from "./features/sessions/SessionsList.js";
 import { SessionDetail } from "./features/sessions/SessionDetail.js";
 import { Projects } from "./features/projects/Projects.js";
 import { Recommendations } from "./features/recommendations/Recommendations.js";
+import { Coaching } from "./features/coaching/Coaching.js";
+import { Doctor } from "./features/doctor/Doctor.js";
 import { Privacy } from "./features/privacy/Privacy.js";
 import { Onboarding } from "./features/onboarding/Onboarding.js";
 import { Live } from "./features/live/Live.js";
@@ -43,6 +45,10 @@ function RouteScreen({ name }: { name: string }) {
       return <Projects />;
     case "recommendations":
       return <Recommendations />;
+    case "coaching":
+      return <Coaching />;
+    case "doctor":
+      return <Doctor />;
     case "privacy":
       return <Privacy />;
     case "onboarding":

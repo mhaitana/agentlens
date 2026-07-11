@@ -32,6 +32,7 @@
     "@agentlens/otel-receiver": "workspace:*",
     "@agentlens/hook-collector": "workspace:*",
     "@agentlens/redaction": "workspace:*",
+    "@agentlens/prompt-coach": "workspace:*",
     "fastify": "^5.2.0",
     "zod": "^3.24.1"
   },

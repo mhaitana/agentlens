@@ -36,4 +36,8 @@ export const qk = {
   privacy: ["privacy"] as const,
   settings: ["settings"] as const,
   live: ["live"] as const,
+  coaching: ["coaching"] as const,
+  coachingPrompts: (page: number, limit: number) => ["coaching-prompts", page, limit] as const,
+  coachingPrompt: (id: string) => ["coaching-prompt", id] as const,
+  doctor: (project?: string) => ["doctor", project ?? null] as const,
 };

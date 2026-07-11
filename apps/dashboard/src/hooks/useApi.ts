@@ -22,6 +22,12 @@ import type {
   SettingsResponse,
   StatusResponse,
   TimelineEvent,
+  CoachingOverview,
+  CoachingPromptListItem,
+  CoachingPromptDetail,
+  DoctorResponse,
+  DoctorApplyResponse,
+  DoctorRollbackResponse,
 } from "../lib/types.js";
 
 export function useStatus() {
@@ -144,6 +150,26 @@ export function useRestoreRecommendation() {
   });
 }
 
+/** Mark a recommendation resolved (POST /recommendations/:id/resolve, §15.13). */
+export function useResolveRecommendation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<{ id: string; status: string }>(`/recommendations/${id}/resolve`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recommendations"] }),
+  });
+}
+
+/** Reopen a resolved/dismissed recommendation (POST /recommendations/:id/reopen). */
+export function useReopenRecommendation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<{ id: string; status: string }>(`/recommendations/${id}/reopen`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recommendations"] }),
+  });
+}
+
 export function useRules() {
   return useQuery<RuleInfo[]>({
     queryKey: qk.rules,
@@ -213,5 +239,92 @@ export function useLive() {
     // Live status is volatile; poll on top of the SSE stream.
     staleTime: 2_000,
     refetchInterval: 5_000,
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Coaching (Phase 3, §15.12)                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** GET /api/v1/coaching/overview. */
+export function useCoachingOverview() {
+  return useQuery<CoachingOverview>({
+    queryKey: qk.coaching,
+    queryFn: () => api.get<CoachingOverview>("/coaching/overview"),
+  });
+}
+
+export interface CoachingPromptsArgs {
+  page?: number;
+  limit?: number;
+}
+
+/** GET /api/v1/coaching/prompts — recent prompts with deterministic scores. */
+export function useCoachingPrompts(args: CoachingPromptsArgs) {
+  const page = args.page ?? 1;
+  const limit = args.limit ?? 25;
+  return useQuery<PageEnvelope<CoachingPromptListItem>>({
+    queryKey: qk.coachingPrompts(page, limit),
+    queryFn: () =>
+      api.get<PageEnvelope<CoachingPromptListItem>>(
+        `/coaching/prompts?page=${page}&limit=${limit}`,
+      ),
+  });
+}
+
+/** GET /api/v1/coaching/prompts/:id — Prompt Coach detail (§15.6). */
+export function useCoachingPrompt(id: string | null) {
+  return useQuery<CoachingPromptDetail>({
+    queryKey: id ? qk.coachingPrompt(id) : ["coaching-prompt", "none"],
+    enabled: !!id,
+    queryFn: () => api.get<CoachingPromptDetail>(`/coaching/prompts/${id}`),
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Configuration Doctor (Phase 3, §15.12)                                     */
+/* -------------------------------------------------------------------------- */
+
+/** GET /api/v1/doctor — read-only report + rollback-eligible patch ids. */
+export function useDoctor(project?: string) {
+  return useQuery<DoctorResponse>({
+    queryKey: qk.doctor(project),
+    queryFn: () => {
+      const qs = project ? `?project=${encodeURIComponent(project)}` : "";
+      return api.get<DoctorResponse>(`/doctor${qs}`);
+    },
+  });
+}
+
+export interface ApplyDoctorArgs {
+  approved: boolean;
+  patchIds?: string[];
+  claudeHome?: string;
+  project?: string;
+}
+
+/** POST /api/v1/doctor/apply — apply approved patches (token-gated, §3.5). */
+export function useApplyDoctorPatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: ApplyDoctorArgs) => api.post<DoctorApplyResponse>("/doctor/apply", args),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["doctor"] }),
+  });
+}
+
+export interface RollbackDoctorArgs {
+  patchId: string;
+  targetFile?: string;
+  claudeHome?: string;
+  project?: string;
+}
+
+/** POST /api/v1/doctor/rollback — restore a previously applied patch. */
+export function useRollbackDoctorPatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: RollbackDoctorArgs) =>
+      api.post<DoctorRollbackResponse>("/doctor/rollback", args),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["doctor"] }),
   });
 }

@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { buildServer, generateRuntimeToken, pickFreePort } from "@agentlens/local-api";
+import { registerDoctorRoutes } from "../doctor/doctor-routes.js";
 import { resolveHome, openAgentLensDb, closeDatabase, loadConfig } from "../context.js";
 import {
   probeHealthy,
@@ -170,6 +171,10 @@ export function makeDashboardCommand(): Command {
         runtimeToken: token,
         dashboardDir: dashboardDir ?? undefined,
         port,
+        // Phase 3: expose the Configuration Doctor over the API (§15.12). The
+        // CLI owns the doctor implementation and registers its routes here so
+        // the dashboard can preview/apply/roll back patches (§3.5 sequence).
+        registerExtraRoutes: registerDoctorRoutes,
       });
 
       await server.listen({ port, host: "127.0.0.1" });

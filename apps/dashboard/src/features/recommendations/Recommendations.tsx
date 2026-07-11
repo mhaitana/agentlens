@@ -12,9 +12,12 @@ import {
   useRecommendations,
   useDismissRecommendation,
   useRestoreRecommendation,
+  useResolveRecommendation,
+  useReopenRecommendation,
 } from "../../hooks/useApi.js";
 import { Badge, Card, EmptyState, ErrorState, Spinner } from "../../components/ui/primitives.js";
 import { Button, ConfidenceBadge } from "../../components/ui/widgets.js";
+import { navigate } from "../../lib/router.js";
 import { formatRelative } from "../../lib/format.js";
 import type { RecommendationRow } from "../../lib/types.js";
 
@@ -22,6 +25,9 @@ export function Recommendations() {
   const q = useRecommendations();
   const dismiss = useDismissRecommendation();
   const restore = useRestoreRecommendation();
+  const resolve = useResolveRecommendation();
+  const reopen = useReopenRecommendation();
+  const busy = dismiss.isPending || restore.isPending || resolve.isPending || reopen.isPending;
 
   return (
     <div className="flex flex-col gap-4">
@@ -29,7 +35,8 @@ export function Recommendations() {
         <h2 className="text-xl font-semibold">Recommendations</h2>
         <p className="text-sm text-[var(--al-text-muted)]">
           Evidence-backed findings from the rule engine. Every recommendation links to the behaviour
-          that triggered it.
+          that triggered it. Dismissed or resolved advice resurfaces only when new evidence changes
+          it.
         </p>
       </div>
 
@@ -48,7 +55,9 @@ export function Recommendations() {
                 rec={r}
                 onDismiss={() => dismiss.mutate(r.id)}
                 onRestore={() => restore.mutate(r.id)}
-                busy={dismiss.isPending || restore.isPending}
+                onResolve={() => resolve.mutate(r.id)}
+                onReopen={() => reopen.mutate(r.id)}
+                busy={busy}
               />
             ))}
           </div>
@@ -62,11 +71,15 @@ function RecommendationCard({
   rec,
   onDismiss,
   onRestore,
+  onResolve,
+  onReopen,
   busy,
 }: {
   rec: RecommendationRow;
   onDismiss: () => void;
   onRestore: () => void;
+  onResolve: () => void;
+  onReopen: () => void;
   busy: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -74,6 +87,8 @@ function RecommendationCard({
   const impact = rec.estimatedImpact as ImpactShape | null;
   const remediation = rec.remediation as RemediationShape | null;
   const dismissed = rec.status === "dismissed";
+  const resolved = rec.status === "resolved";
+  const inactive = dismissed || resolved;
 
   return (
     <Card>
@@ -84,9 +99,29 @@ function RecommendationCard({
             <Badge tone="accent">{rec.category}</Badge>
             <span className="font-mono text-xs text-[var(--al-text-muted)]">{rec.ruleId}</span>
             {dismissed ? <Badge tone="neutral">dismissed</Badge> : null}
+            {resolved ? <Badge tone="low">resolved</Badge> : null}
           </div>
           <h3 className="mt-2 font-semibold">{rec.title}</h3>
           <p className="mt-1 text-sm text-[var(--al-text-muted)]">{rec.summary}</p>
+          {/* Drill into the evidence: a session-scoped rec links straight to its
+             session; a project/window-scoped rec (the common case — rules emit
+             project or window scope, not session scope) links to the project's
+             sessions list via a projectId deep link. */}
+          {rec.sessionId ? (
+            <button
+              className="mt-1 text-xs text-[var(--al-accent)] hover:underline"
+              onClick={() => navigate("session", { id: rec.sessionId ?? "" })}
+            >
+              View related session →
+            </button>
+          ) : rec.projectId ? (
+            <button
+              className="mt-1 text-xs text-[var(--al-accent)] hover:underline"
+              onClick={() => navigate("sessions", { projectId: rec.projectId ?? "" })}
+            >
+              View related sessions →
+            </button>
+          ) : null}
         </div>
         <ConfidenceBadge confidence={rec.confidence} />
       </div>
@@ -169,14 +204,26 @@ function RecommendationCard({
           Updated {formatRelative(rec.updatedAt)}
         </span>
         <div className="flex gap-2">
-          {dismissed ? (
-            <Button size="sm" variant="ghost" onClick={onRestore} disabled={busy}>
-              Restore
-            </Button>
+          {inactive ? (
+            <>
+              <Button size="sm" variant="ghost" onClick={onReopen} disabled={busy}>
+                Reopen
+              </Button>
+              {dismissed ? (
+                <Button size="sm" variant="subtle" onClick={onRestore} disabled={busy}>
+                  Restore
+                </Button>
+              ) : null}
+            </>
           ) : (
-            <Button size="sm" variant="subtle" onClick={onDismiss} disabled={busy}>
-              Dismiss
-            </Button>
+            <>
+              <Button size="sm" variant="subtle" onClick={onDismiss} disabled={busy}>
+                Dismiss
+              </Button>
+              <Button size="sm" variant="ghost" onClick={onResolve} disabled={busy}>
+                Resolve
+              </Button>
+            </>
           )}
         </div>
       </div>

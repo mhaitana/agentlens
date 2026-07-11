@@ -48,6 +48,10 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   installSecurity(app, deps.runtimeToken);
   installErrorHandler(app);
   registerRoutes(app, deps);
+  // Phase 3 seam: let the launcher (CLI) register extra routes — e.g. the
+  // `/api/v1/doctor*` routes backed by the CLI's doctor implementation —
+  // before the dashboard static catch-all so static/parametric routing wins.
+  if (deps.registerExtraRoutes) await deps.registerExtraRoutes(app, deps);
 
   // --- dashboard static serving (same-origin) ---
   const dashboardDir = deps.dashboardDir;

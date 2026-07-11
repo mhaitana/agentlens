@@ -8,6 +8,7 @@
  */
 import type { DrizzleDb } from "@agentlens/database";
 import type { AgentLensConfig } from "@agentlens/config";
+import type { FastifyInstance } from "fastify";
 import type { LiveBus } from "./live.js";
 
 /** Lifecycle handles the API closes on shutdown. */
@@ -43,6 +44,15 @@ export interface ServerDeps {
   liveBus?: LiveBus;
   /** Bound OTLP receiver port (Phase 2). Surfaced in `/api/v1/live` status. */
   otelPort?: number;
+  /**
+   * Optional extra route registrar (Phase 3). The `agentlens dashboard` launcher
+   * uses this to register the `/api/v1/doctor*` routes from the CLI package
+   * without creating an app→app circular dependency: the CLI owns the doctor
+   * implementation and hands a registrar callback to the (depended-on) local
+   * API. Called once during {@link buildServer}, after the core routes and
+   * before the dashboard static handler. Absent in API-only / test contexts.
+   */
+  registerExtraRoutes?: (app: FastifyInstance, deps: ServerDeps) => void | Promise<void>;
 }
 
 /** Stable, versioned error shape (§17). */

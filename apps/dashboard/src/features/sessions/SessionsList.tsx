@@ -2,9 +2,9 @@
  * Sessions list screen (spec §13.9). Search + project/date/model/status filters
  * + pagination. Clicking a row navigates to the session-detail timeline.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProjects, useSessions, type SessionFilters } from "../../hooks/useApi.js";
-import { navigate } from "../../lib/router.js";
+import { navigate, useRoute } from "../../lib/router.js";
 import { formatDateTime, formatDuration, formatNumber, formatRelative } from "../../lib/format.js";
 import { Card, EmptyState, ErrorState, Spinner } from "../../components/ui/primitives.js";
 import { Field, Pagination, Select, TextInput } from "../../components/ui/widgets.js";
@@ -18,11 +18,19 @@ const STATUSES = [
 ];
 
 export function SessionsList() {
+  // Honour a `?projectId=` deep link (e.g. from a recommendation's "View related
+  // sessions" link) while still letting the user change the filter afterwards.
+  const route = useRoute();
   const [search, setSearch] = useState("");
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState(route.params.projectId ?? "");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const limit = 25;
+
+  useEffect(() => {
+    const rp = route.params.projectId ?? "";
+    setProjectId((cur) => (cur === rp ? cur : rp));
+  }, [route.params.projectId]);
 
   const projects = useProjects();
   const filters: SessionFilters = {

@@ -16,6 +16,8 @@ export type RouteName =
   | "session"
   | "projects"
   | "recommendations"
+  | "coaching"
+  | "doctor"
   | "privacy"
   | "onboarding"
   | "live";
@@ -72,6 +74,15 @@ export function useRoute(): ParsedRoute {
 export function navigate(name: RouteName, params?: Record<string, string>): void {
   let hash = `#/${name}`;
   if (name === "session" && params?.id) hash += `/${encodeURIComponent(params.id)}`;
+  // Remaining params (e.g. projectId on the sessions view) become a query string
+  // that parseHash reads back, enabling deep links like #/sessions?projectId=p1.
+  const query: string[] = [];
+  for (const [k, v] of Object.entries(params ?? {})) {
+    if (k === "id" && name === "session") continue;
+    if (v !== undefined && v !== "")
+      query.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+  }
+  if (query.length > 0) hash += `?${query.join("&")}`;
   if (window.location.hash !== hash) window.location.hash = hash;
 }
 

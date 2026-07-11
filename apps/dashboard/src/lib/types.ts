@@ -194,3 +194,197 @@ export interface LiveEvent {
   time: string;
   data: Record<string, unknown>;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Coaching (Phase 3, §15.12)                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** GET /api/v1/coaching/overview — top opportunities, trends, avoidable usage. */
+export interface CoachingOverview {
+  generatedAt: string;
+  topOpportunities: Array<{
+    id: string;
+    ruleId: string;
+    title: string;
+    summary: string;
+    category: string;
+    severity: string;
+    confidence: number;
+    evidenceCount: number;
+    sessionId: string | null;
+    projectId: string | null;
+  }>;
+  improvementsOverTime: Array<{ date: string; count: number }>;
+  repeatedBehaviours: Array<{
+    templateKey: string;
+    occurrences: number;
+    sessions: number;
+    examplePrefix: string;
+  }>;
+  estimatedAvoidableUsage: {
+    estimatedTokens: number | null;
+    estimatedCostUsd: number | null;
+    methodology: string;
+    costLabel: string;
+  };
+  trends: {
+    verificationRate: number | null;
+    verificationProvenance: string;
+    promptQualityScore: number | null;
+    promptQualityProvenance: string;
+    modelAllocationFindings: number;
+    recommendationsByCategory: Array<{ category: string; count: number }>;
+  };
+  modelCatalogue: {
+    version: number;
+    entries: Array<{
+      id: string;
+      matchPatterns: string[];
+      provider: string;
+      capabilityTier: number;
+      costTier: number;
+      contextClass: string;
+      recommendedTaskClasses: string[];
+    }>;
+  };
+}
+
+/** GET /api/v1/coaching/prompts item. */
+export interface CoachingPromptListItem {
+  id: string;
+  sessionId: string;
+  sequence: number;
+  timestamp: string;
+  redactedContent: string | null;
+  approximateTokenCount: number | null;
+  overallScore: number;
+  dimensions: Array<{ key: string; label: string; score: number }>;
+  qualityProvenance: "heuristic";
+}
+
+/** GET /api/v1/coaching/prompts/:id — Prompt Coach detail (§15.6). */
+export interface CoachingPromptDetail {
+  id: string;
+  sessionId: string;
+  sequence: number;
+  timestamp: string;
+  redactedContent: string | null;
+  assessment: {
+    overallScore: number;
+    strengths: string[];
+    ambiguities: string[];
+    missingComponents: string[];
+    dimensions: Array<{ key: string; label: string; score: number; rationale: string }>;
+    provenance: "heuristic";
+  } | null;
+  suggestion: {
+    suggestedPrompt: string;
+    changes: Array<{ kind: string; description: string; component?: string }>;
+    missingComponents: string[];
+    provenance: "heuristic";
+  } | null;
+  comparison: {
+    strengths: string[];
+    ambiguities: string[];
+    missingConstraints: string[];
+    observedOutcome: string[];
+    suggestedImprovedPrompt: string;
+    changeExplanations: Array<{ kind: string; description: string; component?: string }>;
+    disclaimer: string;
+    provenance: "heuristic";
+  } | null;
+  recurringTemplates: Array<{
+    templateKey: string;
+    occurrences: number;
+    sessions: number;
+    examplePrefix: string;
+  }>;
+  baselineComparison: {
+    sessionDurationMs: number | null;
+    personalMedianDurationMs: number | null;
+    relativeDuration: string | null;
+    provenance: string;
+  } | null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Configuration Doctor (Phase 3, §15.12)                                     */
+/* -------------------------------------------------------------------------- */
+
+/** A proposed doctor patch (subset the dashboard renders). */
+export interface DoctorPatch {
+  id: string;
+  kind: string;
+  targetFile?: string;
+  summary: string;
+  impact: string;
+  diff: string;
+  automaticallyApplicable: false;
+  validation: {
+    parses: boolean;
+    noBypassPermissions: boolean;
+    noExternalTransmission: boolean;
+    unrelatedPreserved: boolean;
+    notes: string[];
+  };
+  refused: boolean;
+  refusalReason?: string;
+  addresses: string[];
+}
+
+/** GET /api/v1/doctor response. */
+export interface DoctorResponse {
+  report: {
+    scope: { kind: string; projectPath?: string };
+    generatedAt: string;
+    findings: Array<{
+      id: string;
+      family: string;
+      scope: string;
+      severity: string;
+      title: string;
+      detail: string;
+      fixability: string;
+      patchId?: string;
+    }>;
+    patches: DoctorPatch[];
+    skillDrafts: Array<{ id: string; name: string }>;
+    hookDrafts: Array<{ id: string }>;
+    summary: {
+      total: number;
+      critical: number;
+      warning: number;
+      info: number;
+      patches: number;
+      refusedPatches: number;
+    };
+    diagnostics: Array<{ path: string; message: string }>;
+  };
+  appliedPatchIds: string[];
+}
+
+/** POST /api/v1/doctor/apply response. */
+export interface DoctorApplyResponse {
+  applied: Array<{
+    patchId: string;
+    applied: boolean;
+    backupPath?: string;
+    targetFile?: string;
+    validation: DoctorPatch["validation"];
+    rollbackHint: string;
+  }>;
+  draftsWritten: { skills: string[]; hooks: string[] };
+  appliedPatchIds: string[];
+}
+
+/** POST /api/v1/doctor/rollback response. */
+export interface DoctorRollbackResponse {
+  result: {
+    patchId: string;
+    restored: boolean;
+    backupPath: string;
+    targetFile?: string;
+    validation: DoctorPatch["validation"];
+  };
+  appliedPatchIds: string[];
+}

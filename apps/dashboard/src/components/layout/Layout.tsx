@@ -5,12 +5,14 @@ import type { ReactNode } from "react";
 import {
   Activity,
   FolderGit2,
+  GraduationCap,
   LayoutDashboard,
   Lightbulb,
   Moon,
   Radio,
   Settings2,
   ShieldCheck,
+  Stethoscope,
   Sun,
 } from "lucide-react";
 import { useRoute, navigate, type RouteName } from "../../lib/router.js";
@@ -24,6 +26,8 @@ const NAV: Array<{ name: RouteName; label: string; icon: typeof Activity }> = [
   { name: "sessions", label: "Sessions", icon: Activity },
   { name: "projects", label: "Projects", icon: FolderGit2 },
   { name: "recommendations", label: "Recommendations", icon: Lightbulb },
+  { name: "coaching", label: "Coaching", icon: GraduationCap },
+  { name: "doctor", label: "Doctor", icon: Stethoscope },
   { name: "live", label: "Live", icon: Radio },
   { name: "privacy", label: "Privacy", icon: ShieldCheck },
   { name: "onboarding", label: "Getting started", icon: Settings2 },

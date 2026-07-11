@@ -25,6 +25,7 @@ import {
   hookLiveEvent,
   otelLiveEvent,
 } from "@agentlens/local-api";
+import { registerDoctorRoutes } from "../doctor/doctor-routes.js";
 import { startOtelReceiver } from "@agentlens/otel-receiver";
 import {
   ingestHookEvent,
@@ -169,6 +170,8 @@ export async function startObservation(opts: ObservationOptions): Promise<Observ
     now: opts.now,
     liveBus: bus,
     otelPort: otel.port,
+    // Expose the Configuration Doctor over the live API too (§15.12).
+    registerExtraRoutes: registerDoctorRoutes,
   });
   await server.listen({ port: apiPort, host: "127.0.0.1" });
 

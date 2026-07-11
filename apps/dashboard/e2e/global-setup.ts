@@ -66,13 +66,38 @@ export default async function globalSetup() {
   writeFileSync(join(rrProject, "session-0001.jsonl"), jsonl + "\n", "utf8");
   runCli(home, ["scan", "--path", rrDir]);
 
+  // 1b. Controlled Claude home for the Configuration Doctor (§21: no test may
+  // depend on the developer's real ~/.claude). Seed a no-timeout hook so the
+  // Doctor screen has a deterministic finding + a safe json-settings patch,
+  // then point the dashboard at it via AGENTLENS_CLAUDE_HOME (inspect.ts
+  // honours this override). Backups from an E2E apply land under home/, not here.
+  const claudeHome = mkdtempSync(join(tmpdir(), "agentlens-e2e-claude-"));
+  writeFileSync(
+    join(claudeHome, "settings.json"),
+    JSON.stringify(
+      {
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: "*",
+              hooks: [{ type: "command", command: "echo agentlens-check" }],
+            },
+          ],
+        },
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
   // 2. Boot the dashboard (full SPA + API) against the seeded home.
   const server: ChildProcess = spawn(
     process.execPath,
     [CLI_BIN, "dashboard", "--no-open", "--port", String(PORT)],
     {
       cwd: join(here, "..", "..", ".."),
-      env: { ...process.env, AGENTLENS_HOME: home },
+      env: { ...process.env, AGENTLENS_HOME: home, AGENTLENS_CLAUDE_HOME: claudeHome },
       stdio: "ignore",
     },
   );
@@ -84,5 +109,6 @@ export default async function globalSetup() {
     server.kill("SIGTERM");
     rmSync(home, { recursive: true, force: true });
     rmSync(rrDir, { recursive: true, force: true });
+    rmSync(claudeHome, { recursive: true, force: true });
   };
 }

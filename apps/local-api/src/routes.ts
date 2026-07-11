@@ -23,6 +23,11 @@ import {
 } from "./queries.js";
 import { gatePrompt, gateToolCall, gateCommandRun, gateFileActivity } from "./privacy.js";
 import {
+  computeCoachingOverview,
+  listCoachingPrompts,
+  getCoachingPromptDetail,
+} from "./coaching.js";
+import {
   type LiveBus,
   buildLiveStatus,
   hookLiveEvent,
@@ -337,6 +342,58 @@ export function registerRoutes(app: FastifyInstance, deps: ServerDeps): void {
       .set({ status: "active", updatedAt: new Date().toISOString() })
       .where(eq(schema.recommendations.id, id));
     reply.send({ id, status: "active" });
+    return reply;
+  });
+
+  // Resolve / reopen a recommendation (§15.13 "dismissal and resolution
+  // persist"). Token-gated mutations. A resolved recommendation reappears only
+  // on NEW evidence (a changed fingerprint) — see persist.ts; reopening simply
+  // returns it to active on the existing evidence.
+  app.post("/api/v1/recommendations/:id/resolve", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    await db
+      .update(schema.recommendations)
+      .set({ status: "resolved", updatedAt: new Date().toISOString() })
+      .where(eq(schema.recommendations.id, id));
+    reply.send({ id, status: "resolved" });
+    return reply;
+  });
+
+  app.post("/api/v1/recommendations/:id/reopen", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    await db
+      .update(schema.recommendations)
+      .set({ status: "active", updatedAt: new Date().toISOString() })
+      .where(eq(schema.recommendations.id, id));
+    reply.send({ id, status: "active" });
+    return reply;
+  });
+
+  // --- coaching (Phase 3, §15.12) ----------------------------------------
+  // GET /api/v1/coaching/overview — top opportunities, improvements over time,
+  // repeated behaviours, estimated avoidable usage (labelled estimated), and
+  // verification / prompt-quality / model-allocation trends. Derived from
+  // normalised persisted rows + the deterministic prompt-coach layer only — no
+  // external model (§15.5; external semantic analysis stays disabled by default).
+  app.get("/api/v1/coaching/overview", async () => computeCoachingOverview(db, config, deps));
+
+  // GET /api/v1/coaching/prompts — recent prompts with deterministic quality
+  // scores (§15.5). Content is gated by the active privacy mode.
+  app.get("/api/v1/coaching/prompts", async (req) => {
+    const q = PageQuerySchema.parse(req.query);
+    const params = clampPage(q.page, q.limit);
+    const { items, total } = await listCoachingPrompts(db, mode, params.page, params.limit);
+    return paginate(items, params, total);
+  });
+
+  // GET /api/v1/coaching/prompts/:id — Prompt Coach detail (§15.6): assessment,
+  // suggested structure, outcome-correlated comparison, recurring templates,
+  // and a personal-baseline comparison for the owning session.
+  app.get("/api/v1/coaching/prompts/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const detail = await getCoachingPromptDetail(db, mode, id);
+    if (!detail) return notFound(`Prompt ${id} not found`);
+    reply.send(detail);
     return reply;
   });
 
