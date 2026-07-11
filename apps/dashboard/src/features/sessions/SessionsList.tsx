@@ -3,10 +3,12 @@
  * + pagination. Clicking a row navigates to the session-detail timeline.
  */
 import { useEffect, useState } from "react";
+import { Search, X } from "lucide-react";
 import { useProjects, useSessions, type SessionFilters } from "../../hooks/useApi.js";
 import { navigate, useRoute } from "../../lib/router.js";
 import { formatDateTime, formatDuration, formatNumber, formatRelative } from "../../lib/format.js";
 import { Card, EmptyState, ErrorState, Spinner } from "../../components/ui/primitives.js";
+import { Badge } from "../../components/ui/widgets.js";
 import { Field, Pagination, Select, TextInput } from "../../components/ui/widgets.js";
 
 const STATUSES = [
@@ -50,23 +52,40 @@ export function SessionsList() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-semibold">Sessions</h2>
-        <p className="text-sm text-[var(--al-text-muted)]">
+        <h2 className="text-xl font-semibold tracking-tight">Sessions</h2>
+        <p className="text-sm text-[var(--al-text-secondary)]">
           Browse reconstructed Claude Code sessions and drill into a timeline.
         </p>
       </div>
 
-      <Card className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <Card className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Field label="Search" htmlFor="session-search">
-          <TextInput
-            id="session-search"
-            type="search"
-            placeholder="session id / project"
-            value={search}
-            onChange={(e) => resetPage(setSearch)(e.target.value)}
-          />
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--al-text-muted)]"
+              aria-hidden="true"
+            />
+            <TextInput
+              id="session-search"
+              type="search"
+              placeholder="session id / project"
+              value={search}
+              onChange={(e) => resetPage(setSearch)(e.target.value)}
+              className="pl-8"
+            />
+            {search ? (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--al-text-muted)] hover:bg-[var(--al-bg-hover)] hover:text-[var(--al-text)]"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            ) : null}
+          </div>
         </Field>
         <Field label="Project" htmlFor="project-filter">
           <Select
@@ -108,52 +127,56 @@ export function SessionsList() {
       {q.data ? (
         <div className="flex flex-col gap-3">
           {q.data.items.length === 0 ? (
-            <EmptyState title="No sessions found">
+            <EmptyState title="No sessions found" icon={<Search size={28} />}>
               Try clearing filters, or run <code>agentlens scan</code> to import sessions.
             </EmptyState>
           ) : (
-            <Card className="p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--al-border)] text-left text-xs text-[var(--al-text-muted)]">
-                    <th className="px-3 py-2 font-medium">Started</th>
-                    <th className="px-3 py-2 font-medium">Session</th>
-                    <th className="px-3 py-2 font-medium">Status</th>
-                    <th className="px-3 py-2 text-right font-medium">Duration</th>
-                    <th className="px-3 py-2 text-right font-medium">Prompts</th>
-                    <th className="px-3 py-2 text-right font-medium">Tools</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {q.data.items.map((s) => (
-                    <tr
-                      key={s.id}
-                      onClick={() => navigate("session", { id: s.id })}
-                      className="cursor-pointer border-b border-[var(--al-border)] last:border-0 hover:bg-[var(--al-surface-2)]"
-                    >
-                      <td
-                        className="px-3 py-2 text-[var(--al-text-muted)]"
-                        title={formatDateTime(s.startedAt)}
-                      >
-                        {formatRelative(s.startedAt)}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-xs">{s.id}</td>
-                      <td className="px-3 py-2">
-                        <span className="text-[var(--al-text-muted)]">{s.completionStatus}</span>
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {formatDuration(s.durationMs)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {formatNumber(s.promptCount)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {formatNumber(s.toolCallCount)}
-                      </td>
+            <Card className="overflow-hidden p-0 shadow-[var(--al-shadow-md)]">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-[var(--al-bg-inset)]">
+                    <tr className="text-left text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
+                      <th className="px-4 py-3">Started</th>
+                      <th className="px-4 py-3">Session</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-right">Duration</th>
+                      <th className="px-4 py-3 text-right">Prompts</th>
+                      <th className="px-4 py-3 text-right">Tools</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--al-border)]">
+                    {q.data.items.map((s) => (
+                      <tr
+                        key={s.id}
+                        onClick={() => navigate("session", { id: s.id })}
+                        className="cursor-pointer transition-colors hover:bg-[var(--al-bg-hover)]"
+                      >
+                        <td
+                          className="px-4 py-3 text-[var(--al-text-secondary)]"
+                          title={formatDateTime(s.startedAt)}
+                        >
+                          {formatRelative(s.startedAt)}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-[var(--al-text)]">
+                          {s.id}
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={s.completionStatus} />
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--al-text)]">
+                          {formatDuration(s.durationMs)}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--al-text-secondary)]">
+                          {formatNumber(s.promptCount)}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--al-text-secondary)]">
+                          {formatNumber(s.toolCallCount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </Card>
           )}
           <Pagination
@@ -168,5 +191,21 @@ export function SessionsList() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const tone =
+    status === "completed"
+      ? "low"
+      : status === "failed"
+        ? "critical"
+        : status === "interrupted"
+          ? "medium"
+          : "neutral";
+  return (
+    <Badge tone={tone} className="capitalize">
+      {status}
+    </Badge>
   );
 }

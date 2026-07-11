@@ -1,366 +1,692 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AgentLens — Local-First Analytics & Coaching for AI Coding Agents</title>
-  <meta name="description" content="AgentLens is a local-first, privacy-first analytics, coaching, and configuration doctor for AI coding agents like Claude Code. Zero cloud telemetry.">
-  <meta name="keywords" content="ai-agents, claude-code, analytics, local-first, privacy-first, opentelemetry, prompt-coaching, developer-tools">
-  <meta property="og:title" content="AgentLens — Local-First Analytics & Coaching for AI Coding Agents">
-  <meta property="og:description" content="Evidence-backed recommendations, deterministic prompt coaching, and configuration health checks running 100% locally.">
-  <meta property="og:type" content="website">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="description"
+      content="AgentLens — local-first, privacy-first analytics, coaching, and configuration doctor for AI coding agents. Zero cloud telemetry by default."
+    />
+    <meta name="keywords" content="ai-agents, claude-code, analytics, local-first, privacy-first, opentelemetry, prompt-coaching, developer-tools" />
+    <meta property="og:title" content="AgentLens — Local-First Analytics & Coaching for AI Coding Agents" />
+    <meta
+      property="og:description"
+      content="Evidence-backed recommendations, deterministic prompt coaching, and configuration health checks running 100% locally."
+    />
+    <meta property="og:type" content="website" />
 
-  <!-- Sticky Navigation -->
-  <header class="navbar">
-    <nav class="nav-container" aria-label="Main Navigation">
-      <a href="#" class="logo">
-        <span>AgentLens</span>
-        <span class="logo-badge">Local First</span>
-      </a>
-      <ul class="nav-links">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#interactive-preview">Live Simulator</a></li>
-        <li><a href="#rules-explorer">Rule Catalog</a></li>
-        <li><a href="#privacy">Privacy</a></li>
-        <li><a href="#gallery">Screenshots</a></li>
-        <li><a href="#contribute">Contributors</a></li>
-        <li><a href="https://github.com/agentlens/agentlens" target="_blank" rel="noopener noreferrer" class="nav-cta">GitHub Repo</a></li>
-      </ul>
-    </nav>
-  </header>
+    <title>AgentLens — Local-first analytics for AI coding agents</title>
 
-  <main>
-    <!-- Hero Section -->
-    <section class="hero container">
-      <div class="hero-pill">
-        <span>🛡️</span>
-        <span>100% Local Processing &bull; Zero Cloud Uploads &bull; Loopback 127.0.0.1</span>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <header class="site-header">
+      <div class="container nav-wrapper">
+        <a href="#" class="brand" aria-label="AgentLens home">
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+          <span class="brand-wordmark">AgentLens</span>
+          <span class="brand-badge">Local First</span>
+        </a>
+
+        <nav class="nav" aria-label="Primary">
+          <button
+            class="nav-toggle"
+            aria-expanded="false"
+            aria-controls="nav-menu"
+            aria-label="Open navigation menu"
+            type="button"
+          >
+            <svg class="nav-toggle-open" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 12h18M3 6h18M3 18h18" />
+            </svg>
+            <svg class="nav-toggle-close" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+          <ul class="nav-menu" id="nav-menu">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#interactive-preview">Live demo</a></li>
+            <li><a href="#rules-explorer">Rules</a></li>
+            <li><a href="#privacy">Privacy</a></li>
+            <li><a href="#gallery">Screenshots</a></li>
+            <li><a href="#quickstart">Quickstart</a></li>
+            <li class="nav-cta-item">
+              <a
+                href="https://github.com/agentlens/agentlens"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="button button-primary"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+                </svg>
+                GitHub
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <div class="header-actions">
+          <button
+            class="theme-toggle"
+            aria-label="Toggle theme"
+            type="button"
+            data-theme-toggle
+          >
+            <svg class="theme-icon-light" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="5" />
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+            <svg class="theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </button>
+        </div>
       </div>
-      <h1>
-        Evidence-Backed Analytics for<br>
-        <span class="gradient-text">AI Coding Agents</span>
-      </h1>
-      <p class="hero-subtitle">
-        AgentLens reconstructs coding sessions, computes deterministic quality metrics, and provides personalized coaching—reading transcripts and OpenTelemetry directly from your own machine without a single cloud request.
-      </p>
-      <div class="hero-actions">
-        <a href="#quickstart" class="btn btn-primary">Quickstart CLI</a>
-        <a href="#rules-explorer" class="btn btn-secondary">Explore 34 Recommendation Rules</a>
-      </div>
+    </header>
 
-      <!-- Interactive CLI Terminal Simulator -->
-      <div id="interactive-preview" class="terminal-window" aria-label="Interactive Terminal Preview">
-        <div class="terminal-header">
-          <div class="terminal-dots">
-            <span class="dot dot-red"></span>
-            <span class="dot dot-yellow"></span>
-            <span class="dot dot-green"></span>
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="container">
+          <div class="hero-content">
+            <div class="eyebrow">
+              <svg class="eyebrow-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              <span>100% local · Zero cloud uploads · Loopback 127.0.0.1</span>
+            </div>
+
+            <h1 id="hero-title">
+              Evidence-backed analytics for
+              <span class="text-gradient">AI coding agents</span>
+            </h1>
+            <p class="hero-lead">
+              AgentLens reconstructs coding sessions, computes deterministic quality metrics, and
+              provides personalized coaching — reading transcripts and telemetry directly from your
+              own machine without a single cloud request.
+            </p>
+
+            <div class="hero-actions">
+              <a href="#quickstart" class="button button-primary">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m4 17 6-6-6-6M12 19h8" />
+                </svg>
+                Quickstart CLI
+              </a>
+              <a href="#rules-explorer" class="button button-secondary">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+                Explore 34 Rules
+              </a>
+            </div>
+
+            <p class="hero-note">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              Open source · Privacy-first · Works entirely offline
+            </p>
           </div>
-          <span class="terminal-title">bash — agentlens interactive demo</span>
-          <div class="terminal-tabs">
-            <button class="terminal-tab-btn active" data-cmd="scan">agentlens scan</button>
-            <button class="terminal-tab-btn" data-cmd="report">agentlens report</button>
-            <button class="terminal-tab-btn" data-cmd="doctor">agentlens doctor</button>
-            <button class="terminal-tab-btn" data-cmd="rules">agentlens rules explain</button>
-          </div>
-        </div>
-        <div id="terminal-content" class="terminal-body">
-          <!-- Populated by script.js -->
-        </div>
-      </div>
-    </section>
 
-    <!-- Core Capabilities Grid -->
-    <section id="features" class="section container">
-      <div class="section-header">
-        <span class="section-tag">Core Capabilities</span>
-        <h2 class="section-title">Built for Engineering Rigor</h2>
-        <p class="section-subtitle">
-          Designed for developers who demand full visibility into AI coding agent performance, tool friction, and configuration safety.
-        </p>
-      </div>
-      <div class="grid-3">
-        <article class="feature-card">
-          <div class="feature-icon">📊</div>
-          <h3>Read-Only Session Analytics</h3>
-          <p>
-            Reconstruct complete session timelines, inspect tool execution durations, parse git activity, and track token usage from local transcripts with zero hooks required.
-          </p>
-        </article>
-        <article class="feature-card">
-          <div class="feature-icon">💡</div>
-          <h3>Evidence-Backed Recommendations</h3>
-          <p>
-            34 deterministic rules trigger actionable recommendations backed by queryable evidence—never generic LLM guesses. Every finding links to exact transcript timestamps.
-          </p>
-        </article>
-        <article class="feature-card">
-          <div class="feature-icon">🎯</div>
-          <h3>Deterministic Prompt Coaching</h3>
-          <p>
-            Analyze prompt structure and clarity against personal and project baselines. Compare usage against a configurable capability and cost tier model catalogue.
-          </p>
-        </article>
-        <article class="feature-card">
-          <div class="feature-icon">🩺</div>
-          <h3>Configuration Doctor</h3>
-          <p>
-            Audit coding agent settings for overly permissive permissions or stale MCP servers. Generates safe patches you inspect, approve, back up, and can revert at any time.
-          </p>
-        </article>
-        <article class="feature-card">
-          <div class="feature-icon">🔌</div>
-          <h3>Provider-Neutral Architecture</h3>
-          <p>
-            Built on decoupled <code>SourceAdapter</code> interfaces. Claude Code is the first supported adapter, ready to extend to other agents without touching the analysis engine.
-          </p>
-        </article>
-        <article class="feature-card">
-          <div class="feature-icon">🔒</div>
-          <h3>Automated Secret Redaction</h3>
-          <p>
-            Redaction runs before persistence and before logging. API keys, authorization headers, environment variables, and real home paths are stripped automatically.
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <!-- Interactive Rules Explorer -->
-    <section id="rules-explorer" class="section container">
-      <div class="section-header">
-        <span class="section-tag">Transparent Intelligence</span>
-        <h2 class="section-title">Interactive Rule Catalog</h2>
-        <p class="section-subtitle">
-          Every recommendation is governed by deterministic rules with explicit triggers, confidence scaling formulas, and safe manual remediation paths.
-        </p>
-      </div>
-      <div class="rules-container">
-        <div class="rules-filters">
-          <div class="search-input-wrapper">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="rule-search" class="search-input" placeholder="Search rules by ID or keyword (e.g. TOOLS-001, loop)...">
-          </div>
-          <div class="category-pills">
-            <button class="category-pill active" data-category="all">All (34)</button>
-            <button class="category-pill" data-category="tools">Tools</button>
-            <button class="category-pill" data-category="verification">Verification</button>
-            <button class="category-pill" data-category="workflow">Workflow</button>
-            <button class="category-pill" data-category="context">Context</button>
-            <button class="category-pill" data-category="prompt">Prompt</button>
-            <button class="category-pill" data-category="model">Model</button>
-            <button class="category-pill" data-category="security">Security</button>
-            <button class="category-pill" data-category="configuration">Configuration</button>
-          </div>
-        </div>
-        <div id="rules-grid" class="rules-grid">
-          <!-- Populated dynamically by script.js -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Privacy Modes Section -->
-    <section id="privacy" class="section container">
-      <div class="section-header">
-        <span class="section-tag">Privacy Architecture</span>
-        <h2 class="section-title">Your Data Never Leaves Your Machine</h2>
-        <p class="section-subtitle">
-          Compare our three privacy modes. Even under full local storage, AgentLens binds strictly to loopback and automatically sanitizes credentials.
-        </p>
-      </div>
-      <div class="privacy-comparator">
-        <div class="privacy-tabs">
-          <button class="privacy-tab active" data-mode="redacted-content">redacted-content (Default)</button>
-          <button class="privacy-tab" data-mode="metadata-only">metadata-only (Maximal Privacy)</button>
-          <button class="privacy-tab" data-mode="full-local">full-local (Power Users)</button>
-        </div>
-        <div class="privacy-details">
-          <div class="privacy-box">
-            <h4 id="privacy-title-1">Persisted Locally (Default)</h4>
-            <ul id="privacy-list-1" class="privacy-list">
+          <!-- Interactive CLI Terminal Simulator -->
+          <div
+            id="interactive-preview"
+            class="terminal-window"
+            aria-label="Interactive terminal preview"
+          >
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <span class="dot dot-red" aria-hidden="true"></span>
+                <span class="dot dot-amber" aria-hidden="true"></span>
+                <span class="dot dot-green" aria-hidden="true"></span>
+              </div>
+              <span class="terminal-title">bash — agentlens interactive demo</span>
+              <div class="terminal-tabs" role="tablist" aria-label="Terminal commands">
+                <button
+                  class="terminal-tab-btn active"
+                  data-cmd="scan"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="terminal-content"
+                  id="term-tab-scan"
+                  type="button"
+                >
+                  agentlens scan
+                </button>
+                <button
+                  class="terminal-tab-btn"
+                  data-cmd="report"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="terminal-content"
+                  id="term-tab-report"
+                  type="button"
+                >
+                  agentlens report
+                </button>
+                <button
+                  class="terminal-tab-btn"
+                  data-cmd="doctor"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="terminal-content"
+                  id="term-tab-doctor"
+                  type="button"
+                >
+                  agentlens doctor
+                </button>
+                <button
+                  class="terminal-tab-btn"
+                  data-cmd="rules"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="terminal-content"
+                  id="term-tab-rules"
+                  type="button"
+                >
+                  agentlens rules explain
+                </button>
+              </div>
+            </div>
+            <div id="terminal-content" class="terminal-body" role="tabpanel" aria-labelledby="term-tab-scan">
               <!-- Populated by script.js -->
-            </ul>
-          </div>
-          <div class="privacy-box">
-            <h4 id="privacy-title-2">Never Persisted / Stripped</h4>
-            <ul id="privacy-list-2" class="privacy-list">
-              <!-- Populated by script.js -->
-            </ul>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Dashboard Screenshot Gallery -->
-    <section id="gallery" class="section container">
-      <div class="section-header">
-        <span class="section-tag">Local Dashboard UI</span>
-        <h2 class="section-title">Visualizing Coding Agent Performance</h2>
-        <p class="section-subtitle">
-          Click any screenshot to inspect our fast, loopback-served dashboard interface. All examples use synthetic fixtures.
-        </p>
-      </div>
-      <div class="gallery-grid">
-        <div class="gallery-card">
-          <div class="gallery-img-wrapper">
-            <img src="img/overview.png" alt="Dashboard Overview showing aggregate usage and cost figures" loading="lazy">
-          </div>
-          <div class="gallery-caption">
-            <h4>Dashboard Overview</h4>
-            <p>Aggregate coding agent activity, time distribution, and clear estimated cost caveats.</p>
-          </div>
-        </div>
-        <div class="gallery-card">
-          <div class="gallery-img-wrapper">
-            <img src="img/sessions.png" alt="Sessions List showing reconstructed local sessions" loading="lazy">
-          </div>
-          <div class="gallery-caption">
-            <h4>Reconstructed Sessions</h4>
-            <p>Searchable list of all local sessions with duration, tool counts, and activity indicators.</p>
-          </div>
-        </div>
-        <div class="gallery-card">
-          <div class="gallery-img-wrapper">
-            <img src="img/session-detail.png" alt="Session Detail view with timeline reconstruction" loading="lazy">
-          </div>
-          <div class="gallery-caption">
-            <h4>Session Timeline Detail</h4>
-            <p>Granular chronological breakdown of prompts, shell execution, and file mutations.</p>
-          </div>
-        </div>
-        <div class="gallery-card">
-          <div class="gallery-img-wrapper">
-            <img src="img/recommendations.png" alt="Evidence-Backed Recommendations list showing TOOLS-001" loading="lazy">
-          </div>
-          <div class="gallery-caption">
-            <h4>Evidence-Backed Recommendations</h4>
-            <p>Actionable advice linking directly to structured evidence and trigger thresholds.</p>
-          </div>
-        </div>
-        <div class="gallery-card">
-          <div class="gallery-img-wrapper">
-            <img src="img/coaching.png" alt="Prompt Coaching interface with baseline metrics" loading="lazy">
-          </div>
-          <div class="gallery-caption">
-            <h4>Deterministic Prompt Coaching</h4>
-            <p>Objective coaching against personal and repository baselines—no external API calls.</p>
-          </div>
-        </div>
-        <div class="gallery-card">
-          <div class="gallery-img-wrapper">
-            <img src="img/doctor.png" alt="Configuration Doctor proposing safe reviewable patches" loading="lazy">
-          </div>
-          <div class="gallery-caption">
-            <h4>Configuration Doctor</h4>
-            <p>Detects risky coding agent permissions and generates safe, reviewable configuration patches.</p>
-          </div>
-        </div>
-      </div>
-    </section>
+      <section class="section" id="features" aria-labelledby="features-title">
+        <div class="container">
+          <header class="section-header">
+            <p class="section-eyebrow">Core capabilities</p>
+            <h2 id="features-title">Built for engineering rigor</h2>
+            <p class="section-subtitle">
+              Designed for developers who demand full visibility into AI coding agent performance,
+              tool friction, and configuration safety.
+            </p>
+          </header>
 
-    <!-- Quickstart Section -->
-    <section id="quickstart" class="section container">
-      <div class="section-header">
-        <span class="section-tag">Get Started</span>
-        <h2 class="section-title">Install & Run Locally</h2>
-        <p class="section-subtitle">
-          AgentLens requires Node.js ≥ 24 and pnpm. Install from GitHub and run your first local scan in seconds.
-        </p>
-      </div>
-      <div style="max-width: 820px; margin: 0 auto;">
-        <div class="code-box">
-          <button class="copy-btn" data-copy="git clone https://github.com/agentlens/agentlens.git && cd agentlens && pnpm install && pnpm build">Copy</button>
-          <code># Clone the repository and build packages<br>git clone https://github.com/agentlens/agentlens.git && cd agentlens<br>pnpm install && pnpm build</code>
-        </div>
-        <div class="code-box">
-          <button class="copy-btn" data-copy="agentlens init && agentlens scan && agentlens report --period week">Copy</button>
-          <code># Initialize local environment and scan sessions<br>agentlens init<br>agentlens scan<br>agentlens report --period week</code>
-        </div>
-      </div>
-    </section>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div class="feature-icon feature-icon-emerald">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 3v18h18" />
+                  <path d="M18 17V9M13 17V5M8 17v-4" />
+                </svg>
+              </div>
+              <h3>Read-only session analytics</h3>
+              <p>
+                Reconstruct complete session timelines, inspect tool execution durations, parse git
+                activity, and track token usage from local transcripts — with zero hooks required.
+              </p>
+            </article>
 
-    <!-- Contributors & Extensibility Section -->
-    <section id="contribute" class="section container">
-      <div class="section-header">
-        <span class="section-tag">Contributors Guide</span>
-        <h2 class="section-title">Built for Extensibility</h2>
-        <p class="section-subtitle">
-          Join us in building the open standard for AI coding agent observation and coaching.
-        </p>
-      </div>
-      <div class="grid-3">
-        <div class="feature-card">
-          <h3>SourceAdapter Interface</h3>
-          <p>
-            Add support for new coding agents by implementing the clean <code>SourceAdapter</code> interface. Parse local files and stream events without touching core analytics.
-          </p>
-        </div>
-        <div class="feature-card">
-          <h3>Adding Recommendation Rules</h3>
-          <p>
-            Create new rules in <code>@agentlens/analysis-engine</code>. Every rule must define documented triggers, deterministic confidence, and structured evidence.
-          </p>
-        </div>
-        <div class="feature-card">
-          <h3>The §26 Quality Gate</h3>
-          <p>
-            All pull requests pass our rigorous quality gate: format, lint, typecheck, unit tests, integration tests, full build, and Playwright E2E suites.
-          </p>
-        </div>
-      </div>
-    </section>
-  </main>
+            <article class="feature-card">
+              <div class="feature-icon feature-icon-cyan">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9.81 9.83a4 4 0 1 0 5.92-3.97 4 4 0 0 0-5.92 3.97Z" />
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+                </svg>
+              </div>
+              <h3>Evidence-backed recommendations</h3>
+              <p>
+                34 deterministic rules trigger actionable recommendations backed by queryable
+                evidence — never generic LLM guesses. Every finding links to exact transcript
+                timestamps.
+              </p>
+            </article>
 
-  <!-- Lightbox Modal -->
-  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image Viewer">
-    <div class="lightbox-content">
-      <button id="lightbox-close" class="lightbox-close" aria-label="Close Lightbox">&times;</button>
-      <img id="lightbox-img" src="" alt="Screenshot Fullscreen">
-      <div id="lightbox-title" class="lightbox-title"></div>
+            <article class="feature-card">
+              <div class="feature-icon feature-icon-violet">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="m15 9-6 6M9 9l6 6" />
+                </svg>
+              </div>
+              <h3>Deterministic prompt coaching</h3>
+              <p>
+                Analyze prompt structure and clarity against personal and project baselines. Compare
+                usage against a configurable capability and cost tier model catalogue.
+              </p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon feature-icon-rose">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m-8.03-17.72C5.08 3.99 2.89 6.5 2.89 9.5c0 4.36 2.7 7.5 5.67 7.5" />
+                  <path d="M15.44 2.75c-4.37 6.03-6.02 9.42-8.03 17.72m8.03-17.72C18.92 3.99 21.11 6.5 21.11 9.5c0 4.36-2.7 7.5-5.67 7.5" />
+                </svg>
+              </div>
+              <h3>Configuration doctor</h3>
+              <p>
+                Audit coding agent settings for overly permissive permissions or stale MCP servers.
+                Generates safe patches you inspect, approve, back up, and can revert at any time.
+              </p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon feature-icon-amber">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z" />
+                  <path d="m9 15 .62.8a2 2 0 0 0 2.82 0L14 14" />
+                  <path d="m22 12-4.6 4.6a2 2 0 0 1-2.82 0L12 10" />
+                </svg>
+              </div>
+              <h3>Provider-neutral architecture</h3>
+              <p>
+                Built on decoupled
+                <code>SourceAdapter</code> interfaces. Claude Code is the first supported adapter,
+                ready to extend to other agents without touching the analysis engine.
+              </p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon feature-icon-emerald">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <h3>Automated secret redaction</h3>
+              <p>
+                Redaction runs before persistence and before logging. API keys, authorization
+                headers, environment variables, and real home paths are stripped automatically.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-inset" id="rules-explorer" aria-labelledby="rules-title">
+        <div class="container">
+          <header class="section-header">
+            <p class="section-eyebrow">Transparent intelligence</p>
+            <h2 id="rules-title">Interactive rule catalog</h2>
+            <p class="section-subtitle">
+              Every recommendation is governed by deterministic rules with explicit triggers,
+              confidence scaling, and safe manual remediation paths.
+            </p>
+          </header>
+
+          <div class="rules-container">
+            <div class="rules-filters">
+              <div class="search-input-wrapper">
+                <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  type="text"
+                  id="rule-search"
+                  class="search-input"
+                  placeholder="Search rules by ID or keyword (e.g. TOOLS-001, loop)..."
+                />
+              </div>
+              <div class="category-pills" role="group" aria-label="Filter rules by category">
+                <button class="category-pill active" data-category="all" type="button">All (34)</button>
+                <button class="category-pill" data-category="tools" type="button">Tools</button>
+                <button class="category-pill" data-category="verification" type="button">Verification</button>
+                <button class="category-pill" data-category="workflow" type="button">Workflow</button>
+                <button class="category-pill" data-category="context" type="button">Context</button>
+                <button class="category-pill" data-category="prompt" type="button">Prompt</button>
+                <button class="category-pill" data-category="model" type="button">Model</button>
+                <button class="category-pill" data-category="security" type="button">Security</button>
+                <button class="category-pill" data-category="configuration" type="button">Configuration</button>
+              </div>
+            </div>
+            <div id="rules-grid" class="rules-grid">
+              <!-- Populated dynamically by script.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="privacy" aria-labelledby="privacy-title">
+        <div class="container">
+          <header class="section-header">
+            <p class="section-eyebrow">Privacy architecture</p>
+            <h2 id="privacy-title">Your data never leaves your machine</h2>
+            <p class="section-subtitle">
+              Compare our three privacy modes. Even under full local storage, AgentLens binds
+              strictly to loopback and automatically sanitizes credentials.
+            </p>
+          </header>
+
+          <div class="privacy-comparator">
+            <div class="privacy-tabs" role="tablist" aria-label="Privacy modes">
+              <button
+                class="privacy-tab active"
+                data-mode="redacted-content"
+                role="tab"
+                aria-selected="true"
+                id="privacy-tab-redacted"
+                type="button"
+              >
+                redacted-content (default)
+              </button>
+              <button
+                class="privacy-tab"
+                data-mode="metadata-only"
+                role="tab"
+                aria-selected="false"
+                id="privacy-tab-metadata"
+                type="button"
+              >
+                metadata-only (maximal privacy)
+              </button>
+              <button
+                class="privacy-tab"
+                data-mode="full-local"
+                role="tab"
+                aria-selected="false"
+                id="privacy-tab-full"
+                type="button"
+              >
+                full-local (power users)
+              </button>
+            </div>
+
+            <div class="privacy-details">
+              <div class="privacy-box">
+                <h4 id="privacy-title-1">Persisted locally (default)</h4>
+                <ul id="privacy-list-1" class="privacy-list">
+                  <!-- Populated by script.js -->
+                </ul>
+              </div>
+              <div class="privacy-box">
+                <h4 id="privacy-title-2">Never persisted / stripped</h4>
+                <ul id="privacy-list-2" class="privacy-list">
+                  <!-- Populated by script.js -->
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-inset" id="gallery" aria-labelledby="gallery-title">
+        <div class="container">
+          <header class="section-header">
+            <p class="section-eyebrow">Local dashboard UI</p>
+            <h2 id="gallery-title">Visualizing coding agent performance</h2>
+            <p class="section-subtitle">
+              Click any screenshot to inspect the fast, loopback-served dashboard interface. All
+              examples use synthetic fixtures.
+            </p>
+          </header>
+
+          <div class="gallery-grid">
+            <article class="gallery-card">
+              <div class="gallery-img-wrapper">
+                <img src="img/overview.png" alt="Dashboard overview showing aggregate usage and cost figures" loading="lazy" />
+              </div>
+              <div class="gallery-caption">
+                <h4>Dashboard overview</h4>
+                <p>Aggregate coding agent activity, time distribution, and clear estimated cost caveats.</p>
+              </div>
+            </article>
+
+            <article class="gallery-card">
+              <div class="gallery-img-wrapper">
+                <img src="img/sessions.png" alt="Sessions list showing reconstructed local sessions" loading="lazy" />
+              </div>
+              <div class="gallery-caption">
+                <h4>Reconstructed sessions</h4>
+                <p>Searchable list of all local sessions with duration, tool counts, and activity indicators.</p>
+              </div>
+            </article>
+
+            <article class="gallery-card">
+              <div class="gallery-img-wrapper">
+                <img src="img/session-detail.png" alt="Session detail view with timeline reconstruction" loading="lazy" />
+              </div>
+              <div class="gallery-caption">
+                <h4>Session timeline detail</h4>
+                <p>Granular chronological breakdown of prompts, shell execution, and file mutations.</p>
+              </div>
+            </article>
+
+            <article class="gallery-card">
+              <div class="gallery-img-wrapper">
+                <img src="img/recommendations.png" alt="Evidence-backed recommendations list showing TOOLS-001" loading="lazy" />
+              </div>
+              <div class="gallery-caption">
+                <h4>Evidence-backed recommendations</h4>
+                <p>Actionable advice linking directly to structured evidence and trigger thresholds.</p>
+              </div>
+            </article>
+
+            <article class="gallery-card">
+              <div class="gallery-img-wrapper">
+                <img src="img/coaching.png" alt="Prompt coaching interface with baseline metrics" loading="lazy" />
+              </div>
+              <div class="gallery-caption">
+                <h4>Deterministic prompt coaching</h4>
+                <p>Objective coaching against personal and repository baselines — no external API calls.</p>
+              </div>
+            </article>
+
+            <article class="gallery-card">
+              <div class="gallery-img-wrapper">
+                <img src="img/doctor.png" alt="Configuration doctor proposing safe reviewable patches" loading="lazy" />
+              </div>
+              <div class="gallery-caption">
+                <h4>Configuration doctor</h4>
+                <p>Detects risky coding agent permissions and generates safe, reviewable configuration patches.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="quickstart" aria-labelledby="quickstart-title">
+        <div class="container">
+          <header class="section-header">
+            <p class="section-eyebrow">Get started</p>
+            <h2 id="quickstart-title">Install & run locally</h2>
+            <p class="section-subtitle">
+              AgentLens requires Node.js ≥ 24 and pnpm. Install from GitHub and run your first local
+              scan in seconds.
+            </p>
+          </header>
+
+          <div class="quickstart-grid">
+            <div class="code-box">
+              <button
+                class="copy-btn"
+                data-copy="git clone https://github.com/agentlens/agentlens.git && cd agentlens && pnpm install && pnpm build"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                Copy
+              </button>
+              <code>
+                # Clone the repository and build packages<br />
+                git clone https://github.com/agentlens/agentlens.git && cd agentlens<br />
+                pnpm install && pnpm build
+              </code>
+            </div>
+
+            <div class="code-box">
+              <button
+                class="copy-btn"
+                data-copy="agentlens init && agentlens scan && agentlens report --period week"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                Copy
+              </button>
+              <code>
+                # Initialize local environment and scan sessions<br />
+                agentlens init<br />
+                agentlens scan<br />
+                agentlens report --period week
+              </code>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-inset" id="contribute" aria-labelledby="contribute-title">
+        <div class="container">
+          <header class="section-header">
+            <p class="section-eyebrow">Contributors guide</p>
+            <h2 id="contribute-title">Built for extensibility</h2>
+            <p class="section-subtitle">
+              Join us in building the open standard for AI coding agent observation and coaching.
+            </p>
+          </header>
+
+          <div class="feature-grid">
+            <article class="feature-card">
+              <div class="feature-icon feature-icon-cyan">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+              </div>
+              <h3>SourceAdapter interface</h3>
+              <p>
+                Add support for new coding agents by implementing the clean
+                <code>SourceAdapter</code> interface. Parse local files and stream events without
+                touching core analytics.
+              </p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon feature-icon-violet">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                </svg>
+              </div>
+              <h3>Adding recommendation rules</h3>
+              <p>
+                Create new rules in
+                <code>@agentlens/analysis-engine</code>. Every rule must define documented triggers,
+                deterministic confidence, and structured evidence.
+              </p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon feature-icon-emerald">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+              </div>
+              <h3>The §26 quality gate</h3>
+              <p>
+                All pull requests pass our rigorous quality gate: format, lint, typecheck, unit
+                tests, integration tests, full build, and Playwright E2E suites.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+      <div class="lightbox-content">
+        <button id="lightbox-close" class="lightbox-close" aria-label="Close lightbox" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+        <img id="lightbox-img" src="" alt="Screenshot fullscreen" />
+        <div id="lightbox-title" class="lightbox-title"></div>
+      </div>
     </div>
-  </div>
 
-  <!-- Toast Notification -->
-  <div id="toast" class="toast" role="status">Command copied to clipboard!</div>
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" role="status">Command copied to clipboard!</div>
 
-  <!-- Footer -->
-  <footer>
-    <div class="container">
-      <div class="footer-grid">
-        <div class="footer-col">
-          <h5>AgentLens</h5>
-          <p style="color: var(--text-secondary); font-size: 0.9rem; max-width: 320px; line-height: 1.6;">
-            Local-first, privacy-first analytics and coaching for AI coding agents. Read-only observation, deterministic recommendations, and safe configuration management.
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="brand" aria-label="AgentLens home">
+            <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+            <span class="brand-wordmark">AgentLens</span>
+          </a>
+          <p class="footer-tagline">
+            Local-first, privacy-first analytics and coaching for AI coding agents.
           </p>
+          <p class="footer-copy">© 2026 AgentLens contributors.</p>
         </div>
-        <div class="footer-col">
-          <h5>Documentation</h5>
-          <ul>
-            <li><a href="https://github.com/agentlens/agentlens/blob/main/README.md" target="_blank">README</a></li>
-            <li><a href="https://github.com/agentlens/agentlens/blob/main/docs/architecture.md" target="_blank">Architecture Spec</a></li>
-            <li><a href="https://github.com/agentlens/agentlens/blob/main/docs/rules.md" target="_blank">Rule Catalogue (34 Rules)</a></li>
-            <li><a href="https://github.com/agentlens/agentlens/blob/main/docs/privacy.md" target="_blank">Privacy Guarantee</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h5>Community & Code</h5>
-          <ul>
-            <li><a href="https://github.com/agentlens/agentlens" target="_blank">GitHub Repository</a></li>
-            <li><a href="https://github.com/agentlens/agentlens/blob/main/CONTRIBUTING.md" target="_blank">Contributing Guide</a></li>
-            <li><a href="https://github.com/agentlens/agentlens/blob/main/SECURITY.md" target="_blank">Security & Threat Model</a></li>
-            <li><a href="https://github.com/agentlens/agentlens/issues" target="_blank">Issue Tracker</a></li>
-          </ul>
+
+        <div class="footer-links">
+          <div class="footer-col">
+            <h5>Documentation</h5>
+            <ul>
+              <li>
+                <a href="https://github.com/agentlens/agentlens/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a>
+              </li>
+              <li>
+                <a href="https://github.com/agentlens/agentlens/blob/main/docs/architecture.md" target="_blank" rel="noopener noreferrer">Architecture spec</a>
+              </li>
+              <li>
+                <a href="https://github.com/agentlens/agentlens/blob/main/docs/rules.md" target="_blank" rel="noopener noreferrer">Rule catalogue (34 rules)</a>
+              </li>
+              <li>
+                <a href="https://github.com/agentlens/agentlens/blob/main/docs/privacy.md" target="_blank" rel="noopener noreferrer">Privacy guarantee</a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h5>Community & code</h5>
+            <ul>
+              <li>
+                <a href="https://github.com/agentlens/agentlens" target="_blank" rel="noopener noreferrer">GitHub repository</a>
+              </li>
+              <li>
+                <a href="https://github.com/agentlens/agentlens/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing guide</a>
+              </li>
+              <li>
+                <a href="https://github.com/agentlens/agentlens/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">Security & threat model</a>
+              </li>
+              <li>
+                <a href="https://github.com/agentlens/agentlens/issues" target="_blank" rel="noopener noreferrer">Issue tracker</a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h5>Legal</h5>
+            <ul>
+              <li>
+                <a href="https://github.com/agentlens/agentlens/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT license</a>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
-      <div class="footer-bottom">
+
+      <div class="container footer-bottom">
         <span>Licensed under the MIT License. Built with local-first privacy.</span>
-        <span>AgentLens &copy; 2026</span>
+        <span>AgentLens © 2026</span>
       </div>
-    </div>
-  </footer>
+    </footer>
 
-  <script src="script.js"></script>
-</body>
+    <script src="script.js"></script>
+  </body>
 </html>

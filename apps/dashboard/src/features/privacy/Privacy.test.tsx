@@ -84,7 +84,7 @@ describe("Privacy screen (M2-7)", () => {
   it("switching to metadata-only POSTs privacy.mode without a confirmation dialog", async () => {
     renderPrivacy();
     await waitFor(() => expect(screen.getAllByText("redacted-content").length).toBeGreaterThan(0));
-    fireEvent.change(screen.getByLabelText("Mode"), { target: { value: "metadata-only" } });
+    fireEvent.click(screen.getByRole("button", { name: "Select Metadata only mode" }));
     await waitFor(() => {
       expect(
         settingsCalls.some((c) => c.key === "privacy.mode" && c.value === "metadata-only"),
@@ -97,7 +97,7 @@ describe("Privacy screen (M2-7)", () => {
   it("switching to full-local shows the §8.3 strong-warning opt-in and only POSTs after confirming", async () => {
     renderPrivacy();
     await waitFor(() => expect(screen.getAllByText("redacted-content").length).toBeGreaterThan(0));
-    fireEvent.change(screen.getByLabelText("Mode"), { target: { value: "full-local" } });
+    fireEvent.click(screen.getByRole("button", { name: "Select Full local mode" }));
 
     // The strong-warning confirmation appears (§8.3 explicit opt-in).
     const dialog = await screen.findByText("Enable full-local mode?");

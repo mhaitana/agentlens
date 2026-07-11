@@ -2,6 +2,7 @@
  * Composite widgets: confidence display (§18.3), pagination, form fields.
  */
 import type { ReactNode } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { confidenceBand, confidenceLabel } from "../../lib/format.js";
 import { cn } from "../../lib/cn.js";
 import { Badge, Button } from "./primitives.js";
@@ -45,11 +46,25 @@ export function Pagination({
         Page {page} · {total.toLocaleString()} total
       </span>
       <div className="flex gap-2">
-        <Button size="sm" variant="ghost" disabled={page <= 1} onClick={() => onChange(page - 1)}>
-          ← Prev
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={page <= 1}
+          onClick={() => onChange(page - 1)}
+          aria-label="Previous page"
+          title="Previous page"
+        >
+          <ChevronLeft size={14} aria-hidden="true" />
         </Button>
-        <Button size="sm" variant="ghost" disabled={!hasMore} onClick={() => onChange(page + 1)}>
-          Next →
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={!hasMore}
+          onClick={() => onChange(page + 1)}
+          aria-label="Next page"
+          title="Next page"
+        >
+          <ChevronRight size={14} aria-hidden="true" />
         </Button>
       </div>
     </div>
@@ -70,7 +85,7 @@ export function Field({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={htmlFor} className="text-xs font-medium text-[var(--al-text-muted)]">
+      <label htmlFor={htmlFor} className="text-xs font-medium text-[var(--al-text-secondary)]">
         {label}
       </label>
       {children}
@@ -80,7 +95,7 @@ export function Field({
 }
 
 const inputClass =
-  "rounded-md border border-[var(--al-border)] bg-[var(--al-surface)] px-2.5 py-1.5 text-sm text-[var(--al-text)] placeholder:text-[var(--al-text-muted)] focus:border-[var(--al-accent)] focus:outline-none";
+  "rounded-[var(--al-radius-md)] border border-[var(--al-border)] bg-[var(--al-bg-elevated)] px-3 py-2 text-sm text-[var(--al-text)] placeholder:text-[var(--al-text-muted)] focus:border-[var(--al-accent)] focus:ring-2 focus:ring-[var(--al-accent)]/20 focus:outline-none transition-all";
 
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cn(inputClass, props.className)} />;
@@ -111,20 +126,23 @@ export function ConfirmDialog({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--al-bg-base)]/80 p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-title"
+      onClick={(e) => {
+        if (e.currentTarget === e.target) onCancel();
+      }}
       onKeyDown={(e) => {
         if (e.key === "Escape") onCancel();
       }}
     >
-      <div className="w-full max-w-md rounded-lg border border-[var(--al-border)] bg-[var(--al-surface)] p-5 shadow-xl">
+      <div className="w-full max-w-md rounded-[var(--al-radius-xl)] border border-[var(--al-border)] bg-[var(--al-bg-elevated)] p-5 shadow-[var(--al-shadow-lg)]">
         <h2 id="confirm-title" className="text-base font-semibold">
           {title}
         </h2>
-        <div className="mt-2 text-sm text-[var(--al-text-muted)]">{children}</div>
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="mt-2 text-sm text-[var(--al-text-secondary)]">{children}</div>
+        <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>

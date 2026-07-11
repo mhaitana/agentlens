@@ -30,7 +30,7 @@ export function Live() {
     return (
       <div className="flex flex-col gap-6">
         <Header connected={false} />
-        <p role="alert" className="text-sm text-red-500">
+        <p role="alert" className="text-sm text-[var(--al-danger)]">
           Could not load live status: {(live.error as Error).message}
         </p>
       </div>
@@ -44,21 +44,24 @@ export function Live() {
       <Header connected={stream.connected} />
 
       {!streaming ? (
-        <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/5">
+        <Card className="flex items-start gap-3 border-[var(--al-warning)]/40 bg-[var(--al-warning-weak)]">
           <TriangleAlert
-            className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
+            className="mt-0.5 shrink-0 text-[var(--al-warning)]"
             size={18}
             aria-hidden="true"
           />
           <div className="text-sm">
-            <p className="font-medium">Live collection is not running.</p>
-            <p className="mt-1 text-[var(--al-text-muted)]">
+            <p className="font-semibold text-[var(--al-text)]">Live collection is not running.</p>
+            <p className="mt-1 text-[var(--al-text-secondary)]">
               Start it with{" "}
-              <code className="rounded bg-[var(--al-surface-2)] px-1 py-0.5">
+              <code className="rounded bg-[var(--al-bg-elevated)] px-1 py-0.5 text-[var(--al-text)]">
                 agentlens observe
               </code>{" "}
               to capture hooks and OpenTelemetry here. Read-only analytics still work via{" "}
-              <code className="rounded bg-[var(--al-surface-2)] px-1 py-0.5">agentlens scan</code>.
+              <code className="rounded bg-[var(--al-bg-elevated)] px-1 py-0.5 text-[var(--al-text)]">
+                agentlens scan
+              </code>
+              .
             </p>
           </div>
         </Card>
@@ -85,7 +88,7 @@ export function Live() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-1">
             <CardTitle>Stream</CardTitle>
-            <dl className="mt-3 flex flex-col gap-2 text-sm">
+            <dl className="mt-4 flex flex-col gap-3 text-sm">
               <Row label="Connection">
                 {stream.connected ? (
                   <Badge tone="low">connected</Badge>
@@ -103,7 +106,7 @@ export function Live() {
 
           <Card className="lg:col-span-2">
             <CardTitle>Live event feed</CardTitle>
-            <ul className="mt-3 flex flex-col gap-1.5 text-sm">
+            <ul className="mt-4 flex flex-col gap-1.5 text-sm">
               {stream.feed.length === 0 ? (
                 <li className="text-[var(--al-text-muted)]">
                   Waiting for hook or telemetry events…
@@ -142,12 +145,19 @@ function Indicator({
 }) {
   return (
     <Card className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 text-xs font-medium text-[var(--al-text-muted)]">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
         {icon}
         {label}
       </div>
       <div className="flex items-center gap-2">
-        <Badge tone={running ? "low" : "medium"}>{running ? "running" : "off"}</Badge>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ background: running ? "var(--al-success)" : "var(--al-text-muted)" }}
+            aria-hidden="true"
+          />
+          <Badge tone={running ? "low" : "medium"}>{running ? "running" : "off"}</Badge>
+        </div>
         <span className="font-mono text-xs text-[var(--al-text-muted)]">{detail}</span>
       </div>
     </Card>
@@ -157,8 +167,12 @@ function Indicator({
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <Card className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-[var(--al-text-muted)]">{label}</span>
-      <span className="text-2xl font-semibold tabular-nums">{value}</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
+        {label}
+      </span>
+      <span className="text-2xl font-semibold tabular-nums tracking-tight text-[var(--al-text)]">
+        {value}
+      </span>
     </Card>
   );
 }
@@ -166,8 +180,8 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="text-[var(--al-text-muted)]">{label}</dt>
-      <dd className="font-medium tabular-nums">{children}</dd>
+      <dt className="text-[var(--al-text-secondary)]">{label}</dt>
+      <dd className="font-medium tabular-nums text-[var(--al-text)]">{children}</dd>
     </div>
   );
 }
@@ -181,9 +195,9 @@ function FeedRow({ item }: { item: LiveFeedItem }) {
         : item.type;
   const inserted = item.type === "hook" ? (item.data.inserted === true ? "new" : "dup") : null;
   return (
-    <li className="flex items-center gap-2 rounded border border-[var(--al-border)] bg-[var(--al-surface)] px-2 py-1.5">
+    <li className="flex items-center gap-2 rounded-[var(--al-radius-md)] border border-[var(--al-border)] bg-[var(--al-bg-elevated)] px-3 py-2">
       <Badge tone={item.type === "hook" ? "accent" : "info"}>{item.type}</Badge>
-      <span className="font-medium">{name}</span>
+      <span className="font-medium text-[var(--al-text)]">{name}</span>
       {inserted ? <Badge tone="neutral">{inserted}</Badge> : null}
       <span className="ml-auto font-mono text-xs text-[var(--al-text-muted)]">
         {formatDateTime(item.time)}

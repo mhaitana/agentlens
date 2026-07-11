@@ -13,6 +13,7 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
   Clock,
   FilePen,
   FileText,
@@ -46,12 +47,14 @@ export function SessionDetail({ id: idProp }: { id?: string } = {}) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Button size="sm" variant="subtle" onClick={() => navigate("sessions")}>
-        ← Back to sessions
+      <Button size="sm" variant="ghost" onClick={() => navigate("sessions")}>
+        <ChevronLeft size={14} /> Back to sessions
       </Button>
 
       <div>
-        <h2 className="font-mono text-xl font-semibold">Session {id}</h2>
+        <h2 className="font-mono text-xl font-semibold tracking-tight text-[var(--al-text)]">
+          Session {id}
+        </h2>
         {session.data ? (
           <SessionSummary
             session={session.data.session}
@@ -66,15 +69,15 @@ export function SessionDetail({ id: idProp }: { id?: string } = {}) {
       {recs.data && recs.data.length > 0 ? (
         <Card>
           <CardTitle>Recommendations in this session ({recs.data.length})</CardTitle>
-          <ul className="mt-3 space-y-3">
+          <ul className="mt-4 space-y-3">
             {recs.data.map((r) => (
               <li key={r.id} className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <Badge tone="accent">{r.category}</Badge>
-                    <span className="font-medium">{r.title}</span>
+                    <span className="font-medium text-[var(--al-text)]">{r.title}</span>
                   </div>
-                  <p className="mt-1 text-sm text-[var(--al-text-muted)]">{r.summary}</p>
+                  <p className="mt-1 text-sm text-[var(--al-text-secondary)]">{r.summary}</p>
                 </div>
                 <ConfidenceBadge confidence={r.confidence} />
               </li>
@@ -83,11 +86,11 @@ export function SessionDetail({ id: idProp }: { id?: string } = {}) {
         </Card>
       ) : null}
 
-      <Card className="p-0">
-        <div className="border-b border-[var(--al-border)] px-4 py-3">
-          <CardTitle>Timeline</CardTitle>
+      <Card className="overflow-hidden p-0">
+        <div className="border-b border-[var(--al-border)] bg-[var(--al-bg-inset)] px-4 py-3">
+          <CardTitle className="mb-0">Timeline</CardTitle>
         </div>
-        <div className="p-2">
+        <div className="p-3">
           {events.isLoading ? <Spinner label="Loading timeline" /> : null}
           {events.isError ? <ErrorState error={events.error} /> : null}
           {events.data ? (
@@ -116,8 +119,8 @@ function SessionSummary({
   const durationMs = typeof session.durationMs === "number" ? session.durationMs : null;
   const model = typeof session.modelId === "string" ? session.modelId : undefined;
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--al-text-muted)]">
-      <Badge tone={status === "completed" ? "low" : status === "failed" ? "high" : "medium"}>
+    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--al-text-secondary)]">
+      <Badge tone={statusTone(status)} className="capitalize">
         {status}
       </Badge>
       {projectName ? <span>Project: {projectName}</span> : null}
@@ -129,6 +132,19 @@ function SessionSummary({
       {durationMs !== null ? <span>· {formatDuration(durationMs)}</span> : null}
     </div>
   );
+}
+
+function statusTone(status: string): "neutral" | "low" | "medium" | "high" | "critical" | "info" {
+  switch (status) {
+    case "completed":
+      return "low";
+    case "failed":
+      return "critical";
+    case "interrupted":
+      return "medium";
+    default:
+      return "neutral";
+  }
 }
 
 const KIND_META: Record<string, { icon: LucideIcon; label: string; tone: string }> = {
@@ -150,7 +166,7 @@ function Timeline({ events }: { events: TimelineEvent[] }) {
         return (
           <li
             key={`${e.timestamp}-${i}`}
-            className="flex gap-3 rounded-md px-2 py-2 hover:bg-[var(--al-surface-2)]"
+            className="flex gap-3 rounded-[var(--al-radius-md)] px-2 py-2 transition-colors hover:bg-[var(--al-bg-hover)]"
           >
             <div className="mt-0.5 shrink-0">
               <Icon size={16} className="text-[var(--al-text-muted)]" aria-hidden="true" />
@@ -205,8 +221,12 @@ function EventBody({ kind, data }: { kind: string; data: Record<string, unknown>
       const input = typeof data.inputTokens === "number" ? data.inputTokens : null;
       const output = typeof data.outputTokens === "number" ? data.outputTokens : null;
       return (
-        <p className="mt-1 text-sm text-[var(--al-text-muted)]">
-          {model ? <span className="font-mono">{model}</span> : "model request"}
+        <p className="mt-1 text-sm text-[var(--al-text-secondary)]">
+          {model ? (
+            <span className="font-mono text-[var(--al-text)]">{model}</span>
+          ) : (
+            "model request"
+          )}
           {input !== null ? ` · in ${formatTokens(input)}` : null}
           {output !== null ? ` · out ${formatTokens(output)}` : null}
         </p>
@@ -220,23 +240,23 @@ function EventBody({ kind, data }: { kind: string; data: Record<string, unknown>
       return (
         <div className="mt-1 text-sm">
           <p className="flex items-center gap-2">
-            <span className="font-mono">{name}</span>
+            <span className="font-mono text-[var(--al-text)]">{name}</span>
             {ok ? (
-              <CheckCircle2 size={13} className="text-green-500" aria-label="success" />
+              <CheckCircle2 size={13} className="text-[var(--al-success)]" aria-label="success" />
             ) : (
-              <XCircle size={13} className="text-red-500" aria-label="failed" />
+              <XCircle size={13} className="text-[var(--al-danger)]" aria-label="failed" />
             )}
             {dur !== null ? (
               <span className="text-xs text-[var(--al-text-muted)]">{formatDuration(dur)}</span>
             ) : null}
           </p>
           {input ? (
-            <pre className="mt-1 overflow-auto rounded bg-[var(--al-surface-2)] p-2 text-xs">
+            <pre className="mt-1 overflow-auto rounded-[var(--al-radius-md)] border border-[var(--al-border)] bg-[var(--al-bg-inset)] p-2 text-xs text-[var(--al-text)]">
               {input}
             </pre>
           ) : null}
           {!ok && data.failureType ? (
-            <p className="mt-1 text-xs text-red-500">failure: {str(data.failureType)}</p>
+            <p className="mt-1 text-xs text-[var(--al-danger)]">failure: {str(data.failureType)}</p>
           ) : null}
         </div>
       );
@@ -246,13 +266,15 @@ function EventBody({ kind, data }: { kind: string; data: Record<string, unknown>
       const path = str(data.redactedPath);
       const ok = data.success !== false;
       return (
-        <p className="mt-1 flex items-center gap-2 text-sm">
+        <p className="mt-1 flex items-center gap-2 text-sm text-[var(--al-text-secondary)]">
           <FileText size={13} className="text-[var(--al-text-muted)]" aria-hidden="true" />
-          <span className="font-mono">{op}</span>
+          <span className="font-mono text-[var(--al-text)]">{op}</span>
           {path ? (
             <span className="break-all font-mono text-xs text-[var(--al-text-muted)]">{path}</span>
           ) : null}
-          {ok ? null : <XCircle size={13} className="text-red-500" aria-label="failed" />}
+          {ok ? null : (
+            <XCircle size={13} className="text-[var(--al-danger)]" aria-label="failed" />
+          )}
         </p>
       );
     }
@@ -264,14 +286,20 @@ function EventBody({ kind, data }: { kind: string; data: Record<string, unknown>
         <div className="mt-1 text-sm">
           <p className="flex items-center gap-2">
             {ok ? (
-              <CheckCircle2 size={13} className="text-green-500" aria-label="exit success" />
+              <CheckCircle2
+                size={13}
+                className="text-[var(--al-success)]"
+                aria-label="exit success"
+              />
             ) : (
-              <XCircle size={13} className="text-red-500" aria-label="exit failure" />
+              <XCircle size={13} className="text-[var(--al-danger)]" aria-label="exit failure" />
             )}
-            <span className="font-mono text-xs uppercase">{fam || "command"}</span>
+            <span className="font-mono text-xs uppercase text-[var(--al-text)]">
+              {fam || "command"}
+            </span>
           </p>
           {cmd ? (
-            <pre className="mt-1 overflow-auto rounded bg-[var(--al-surface-2)] p-2 text-xs">
+            <pre className="mt-1 overflow-auto rounded-[var(--al-radius-md)] border border-[var(--al-border)] bg-[var(--al-bg-inset)] p-2 text-xs text-[var(--al-text)]">
               {cmd}
             </pre>
           ) : (
@@ -287,14 +315,20 @@ function EventBody({ kind, data }: { kind: string; data: Record<string, unknown>
       const ok = data.success === true;
       const changed = data.codeChangedAfter === true;
       return (
-        <p className="mt-1 flex items-center gap-2 text-sm">
+        <p className="mt-1 flex items-center gap-2 text-sm text-[var(--al-text-secondary)]">
           {ok ? (
-            <CheckCircle2 size={13} className="text-green-500" aria-label="success" />
+            <CheckCircle2 size={13} className="text-[var(--al-success)]" aria-label="success" />
           ) : (
-            <AlertTriangle size={13} className="text-amber-500" aria-label="not successful" />
+            <AlertTriangle
+              size={13}
+              className="text-[var(--al-warning)]"
+              aria-label="not successful"
+            />
           )}
-          <span className="font-mono">{k}</span>
-          {changed ? <span className="text-xs text-amber-500">code changed after</span> : null}
+          <span className="font-mono text-[var(--al-text)]">{k}</span>
+          {changed ? (
+            <span className="text-xs text-[var(--al-warning)]">code changed after</span>
+          ) : null}
         </p>
       );
     }
@@ -310,10 +344,12 @@ function EventBody({ kind, data }: { kind: string; data: Record<string, unknown>
           ? data.approximatePostCompactionTokens
           : null;
       return (
-        <p className="mt-1 flex items-center gap-2 text-sm">
+        <p className="mt-1 flex items-center gap-2 text-sm text-[var(--al-text-secondary)]">
           <Layers size={13} className="text-[var(--al-text-muted)]" aria-hidden="true" />
-          <span className="font-mono">{trigger || "compaction"}</span>
-          {ok ? null : <XCircle size={13} className="text-red-500" aria-label="failed" />}
+          <span className="font-mono text-[var(--al-text)]">{trigger || "compaction"}</span>
+          {ok ? null : (
+            <XCircle size={13} className="text-[var(--al-danger)]" aria-label="failed" />
+          )}
           {pre !== null && post !== null ? (
             <span className="text-xs text-[var(--al-text-muted)]">
               {formatTokens(pre)} → {formatTokens(post)}

@@ -38,6 +38,7 @@ import {
   formatRelative,
   formatTokens,
 } from "../../lib/format.js";
+import { cn } from "../../lib/cn.js";
 import type { CoachingOverview, CoachingPromptListItem } from "../../lib/types.js";
 
 export function Coaching() {
@@ -47,8 +48,8 @@ export function Coaching() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-semibold">Coaching</h2>
-        <p className="text-sm text-[var(--al-text-muted)]">
+        <h2 className="text-xl font-semibold tracking-tight">Coaching</h2>
+        <p className="text-sm text-[var(--al-text-secondary)]">
           Evidence-backed coaching from your local sessions. Quality scores are deterministic
           structural signals (heuristic) — no external model is used.
         </p>
@@ -129,29 +130,49 @@ function ImprovementsChart({ data }: { data: CoachingOverview }) {
   return (
     <Card>
       <CardTitle>Improvements over time</CardTitle>
-      <div className="mt-3 h-56">
+      <div className="mt-4 h-56">
         {chartData.length === 0 ? (
           <EmptyState title="No data">No recommendations recorded in the last 14 days.</EmptyState>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--al-border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="var(--al-text-muted)" />
-              <YAxis tick={{ fontSize: 11 }} stroke="var(--al-text-muted)" allowDecimals={false} />
+            <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: -8 }}>
+              <defs>
+                <linearGradient id="improvementBar" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--al-accent)" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="var(--al-accent)" stopOpacity={0.55} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--al-border)" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: "var(--al-text-muted)", fontSize: 10 }}
+                stroke="var(--al-border)"
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: "var(--al-text-muted)", fontSize: 11 }}
+                stroke="var(--al-border)"
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
               <Tooltip
+                cursor={{ fill: "var(--al-bg-hover)", opacity: 0.4 }}
                 contentStyle={{
-                  background: "var(--al-surface)",
+                  background: "var(--al-bg-elevated)",
                   border: "1px solid var(--al-border)",
-                  borderRadius: 8,
+                  borderRadius: "var(--al-radius-lg)",
                   fontSize: 12,
+                  color: "var(--al-text)",
                 }}
               />
-              <Bar dataKey="count" fill="var(--al-accent)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill="url(#improvementBar)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
       </div>
-      <p className="mt-2 text-xs text-[var(--al-text-muted)]">
+      <p className="mt-3 text-xs text-[var(--al-text-muted)]">
         New active recommendations per day (last 14 days).
       </p>
     </Card>
@@ -164,18 +185,21 @@ function RepeatedBehavioursCard({ data }: { data: CoachingOverview }) {
     <Card>
       <CardTitle>Repeated behaviours</CardTitle>
       {items.length === 0 ? (
-        <div className="mt-3">
+        <div className="mt-4">
           <EmptyState title="No repeated templates">
             No recurring prompt templates detected.
           </EmptyState>
         </div>
       ) : (
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="mt-4 space-y-3 text-sm">
           {items.map((t) => (
-            <li key={t.templateKey} className="flex flex-col gap-0.5">
+            <li
+              key={t.templateKey}
+              className="flex flex-col gap-1 rounded-[var(--al-radius-md)] bg-[var(--al-bg-inset)] p-3"
+            >
               <span className="flex items-center gap-2">
-                <Badge tone="accent">{t.occurrences}× </Badge>
-                <span className="text-[var(--al-text-muted)]">{t.sessions} sessions</span>
+                <Badge tone="accent">{t.occurrences}×</Badge>
+                <span className="text-[var(--al-text-secondary)]">{t.sessions} sessions</span>
               </span>
               <span className="font-mono text-xs text-[var(--al-text-muted)]">
                 {t.examplePrefix}
@@ -184,7 +208,7 @@ function RepeatedBehavioursCard({ data }: { data: CoachingOverview }) {
           ))}
         </ul>
       )}
-      <p className="mt-2 text-xs text-[var(--al-text-muted)]">
+      <p className="mt-3 text-xs text-[var(--al-text-muted)]">
         <ProvenanceTag provenance="heuristic" /> — deterministic template clustering.
       </p>
     </Card>
@@ -197,17 +221,17 @@ function TopOpportunitiesCard({ data }: { data: CoachingOverview }) {
     <Card>
       <CardTitle>Top opportunities</CardTitle>
       {items.length === 0 ? (
-        <div className="mt-3">
+        <div className="mt-4">
           <EmptyState title="No active opportunities">
             Run a scan to populate recommendations.
           </EmptyState>
         </div>
       ) : (
-        <ul className="mt-3 divide-y divide-[var(--al-border)] text-sm">
+        <ul className="mt-4 divide-y divide-[var(--al-border)] text-sm">
           {items.map((o) => {
             const band = confidenceBand(o.confidence);
             return (
-              <li key={o.id} className="flex flex-wrap items-start justify-between gap-2 py-2">
+              <li key={o.id} className="flex flex-wrap items-start justify-between gap-2 py-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone={severityTone(o.severity)}>{o.severity}</Badge>
@@ -216,11 +240,11 @@ function TopOpportunitiesCard({ data }: { data: CoachingOverview }) {
                       {o.ruleId}
                     </span>
                   </div>
-                  <p className="mt-1 font-medium">{o.title}</p>
-                  <p className="text-xs text-[var(--al-text-muted)]">{o.summary}</p>
+                  <p className="mt-1 font-medium text-[var(--al-text)]">{o.title}</p>
+                  <p className="text-xs text-[var(--al-text-secondary)]">{o.summary}</p>
                   {o.sessionId ? (
                     <button
-                      className="mt-1 text-xs text-[var(--al-accent)] hover:underline"
+                      className="mt-1 text-xs font-medium text-[var(--al-accent)] hover:underline"
                       onClick={() => navigate("session", { id: o.sessionId ?? "" })}
                     >
                       View related session →
@@ -252,21 +276,27 @@ function ModelCatalogueCard({ data }: { data: CoachingOverview }) {
         <span className="font-mono">analysis.modelCatalogue</span>. v{data.modelCatalogue.version}.
       </p>
       {entries.length === 0 ? (
-        <div className="mt-3">
+        <div className="mt-4">
           <EmptyState title="No entries">No model catalogue entries configured.</EmptyState>
         </div>
       ) : (
-        <ul className="mt-3 divide-y divide-[var(--al-border)] text-sm">
+        <ul className="mt-4 divide-y divide-[var(--al-border)] text-sm">
           {entries.map((e) => (
-            <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono">{e.id}</span>
+                <span className="font-mono text-[var(--al-text)]">{e.id}</span>
                 <Badge tone="neutral">{e.provider}</Badge>
               </div>
-              <div className="flex flex-wrap gap-2 text-xs text-[var(--al-text-muted)]">
-                <span>capability {e.capabilityTier}/5</span>
-                <span>cost {e.costTier}/5</span>
-                <span>context {e.contextClass}</span>
+              <div className="flex flex-wrap gap-2 text-xs text-[var(--al-text-secondary)]">
+                <span className="rounded-[var(--al-radius-md)] bg-[var(--al-bg-inset)] px-2 py-1">
+                  capability {e.capabilityTier}/5
+                </span>
+                <span className="rounded-[var(--al-radius-md)] bg-[var(--al-bg-inset)] px-2 py-1">
+                  cost {e.costTier}/5
+                </span>
+                <span className="rounded-[var(--al-radius-md)] bg-[var(--al-bg-inset)] px-2 py-1">
+                  context {e.contextClass}
+                </span>
               </div>
             </li>
           ))}
@@ -295,8 +325,8 @@ function PromptCoachSection({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h3 className="text-lg font-semibold">Prompt Coach</h3>
-        <p className="text-sm text-[var(--al-text-muted)]">
+        <h3 className="text-lg font-semibold tracking-tight">Prompt Coach</h3>
+        <p className="text-sm text-[var(--al-text-secondary)]">
           Deterministic prompt-quality scoring (§15.5). Select a prompt for a structured comparison
           and suggested improvement.
         </p>
@@ -309,7 +339,7 @@ function PromptCoachSection({
           <EmptyState title="No prompts">No prompts recorded yet.</EmptyState>
         ) : (
           <div className="flex flex-col gap-3">
-            <ul className="divide-y divide-[var(--al-border)] rounded-lg border border-[var(--al-border)]">
+            <ul className="divide-y divide-[var(--al-border)] overflow-hidden rounded-[var(--al-radius-lg)] border border-[var(--al-border)] bg-[var(--al-bg-elevated)]">
               {q.data.items.map((p) => (
                 <PromptRow
                   key={p.id}
@@ -355,14 +385,17 @@ function PromptRow({
       <button
         onClick={onSelect}
         aria-pressed={active}
-        className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left hover:bg-[var(--al-surface-2)]"
+        className={cn(
+          "flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition-colors",
+          active ? "bg-[var(--al-accent-ghost)]" : "hover:bg-[var(--al-bg-hover)]",
+        )}
       >
-        <div className="min-w-0">
+        <div className="min-w-0 text-left">
           <p className="font-mono text-xs text-[var(--al-text-muted)]">
             #{prompt.sequence} · {formatRelative(prompt.timestamp)} ·{" "}
             {prompt.approximateTokenCount ?? "?"} tok
           </p>
-          <p className="truncate text-sm">
+          <p className="truncate text-sm text-[var(--al-text)]">
             {prompt.redactedContent ?? (
               <span className="text-[var(--al-text-muted)]">content hidden by privacy mode</span>
             )}
@@ -383,11 +416,11 @@ function PromptDetail({
   data: NonNullable<ReturnType<typeof useCoachingPrompt>["data"]>;
 }) {
   return (
-    <Card>
+    <Card className="border-l-4 border-l-[var(--al-accent)]">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle>Prompt detail #{data.sequence}</CardTitle>
         <button
-          className="text-xs text-[var(--al-accent)] hover:underline"
+          className="text-xs font-medium text-[var(--al-accent)] hover:underline"
           onClick={() => navigate("session", { id: data.sessionId })}
         >
           View session →
@@ -395,32 +428,40 @@ function PromptDetail({
       </div>
 
       {data.redactedContent ? (
-        <pre className="mt-3 overflow-auto whitespace-pre-wrap rounded bg-[var(--al-surface-2)] p-2 text-xs">
+        <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-[var(--al-radius-md)] border border-[var(--al-border)] bg-[var(--al-bg-inset)] p-3 text-xs text-[var(--al-text)]">
           {data.redactedContent}
         </pre>
       ) : (
-        <p className="mt-3 text-sm text-[var(--al-text-muted)]">
+        <p className="mt-4 text-sm text-[var(--al-text-muted)]">
           Content is hidden under the active privacy mode.
         </p>
       )}
 
       {data.assessment ? (
-        <div className="mt-3">
-          <h4 className="text-xs font-semibold uppercase text-[var(--al-text-muted)]">
+        <div className="mt-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
             Quality dimensions
           </h4>
-          <ul className="mt-2 space-y-1 text-sm">
+          <ul className="mt-3 space-y-2 text-sm">
             {data.assessment.dimensions.map((d) => (
-              <li key={d.key} className="flex flex-col gap-0.5">
+              <li key={d.key} className="flex flex-col gap-1">
                 <span className="flex justify-between">
-                  <span>{d.label}</span>
-                  <span className="tabular-nums">{formatPct(d.score)}</span>
+                  <span className="text-[var(--al-text)]">{d.label}</span>
+                  <span className="tabular-nums font-medium text-[var(--al-text)]">
+                    {formatPct(d.score)}
+                  </span>
                 </span>
-                <span className="text-xs text-[var(--al-text-muted)]">{d.rationale}</span>
+                <span className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--al-bg-inset)]">
+                  <span
+                    className="block h-full rounded-full bg-[var(--al-accent)]"
+                    style={{ width: `${Math.round(d.score * 100)}%` }}
+                  />
+                </span>
+                <span className="text-xs text-[var(--al-text-secondary)]">{d.rationale}</span>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-[var(--al-text-muted)]">
+          <p className="mt-3 text-xs text-[var(--al-text-muted)]">
             Overall {formatPct(data.assessment.overallScore)} ·{" "}
             <ProvenanceTag provenance={data.assessment.provenance} />
           </p>
@@ -428,40 +469,40 @@ function PromptDetail({
       ) : null}
 
       {data.comparison ? (
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <h4 className="text-xs font-semibold uppercase text-[var(--al-text-muted)]">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-[var(--al-radius-md)] bg-[var(--al-bg-inset)] p-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
               Outcome correlation
             </h4>
-            <ul className="mt-1 space-y-0.5 text-sm">
+            <ul className="mt-2 space-y-1 text-sm text-[var(--al-text)]">
               {data.comparison.observedOutcome.map((o, i) => (
                 <li key={i}>• {o}</li>
               ))}
             </ul>
             {data.comparison.ambiguities.length > 0 ? (
-              <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+              <p className="mt-3 text-xs text-[var(--al-warning)]">
                 Ambiguities: {data.comparison.ambiguities.join("; ")}
               </p>
             ) : null}
           </div>
-          <div>
-            <h4 className="text-xs font-semibold uppercase text-[var(--al-text-muted)]">
+          <div className="rounded-[var(--al-radius-md)] bg-[var(--al-bg-inset)] p-3">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
               Suggested improvement
             </h4>
-            <pre className="mt-1 overflow-auto whitespace-pre-wrap rounded bg-[var(--al-surface-2)] p-2 text-xs">
+            <pre className="mt-2 overflow-auto whitespace-pre-wrap rounded-[var(--al-radius-md)] border border-[var(--al-border)] bg-[var(--al-bg-elevated)] p-3 text-xs text-[var(--al-text)]">
               {data.comparison.suggestedImprovedPrompt}
             </pre>
-            <p className="mt-1 text-xs text-[var(--al-text-muted)]">{data.comparison.disclaimer}</p>
+            <p className="mt-2 text-xs text-[var(--al-text-muted)]">{data.comparison.disclaimer}</p>
           </div>
         </div>
       ) : null}
 
       {data.baselineComparison ? (
-        <div className="mt-3">
-          <h4 className="text-xs font-semibold uppercase text-[var(--al-text-muted)]">
+        <div className="mt-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
             Baseline comparison
           </h4>
-          <p className="mt-1 text-sm">
+          <p className="mt-2 text-sm text-[var(--al-text)]">
             {data.baselineComparison.relativeDuration ?? "—"}{" "}
             <ProvenanceTag provenance={data.baselineComparison.provenance} />
           </p>
@@ -469,11 +510,11 @@ function PromptDetail({
       ) : null}
 
       {data.recurringTemplates.length > 0 ? (
-        <div className="mt-3">
-          <h4 className="text-xs font-semibold uppercase text-[var(--al-text-muted)]">
+        <div className="mt-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
             Recurring templates
           </h4>
-          <ul className="mt-1 space-y-0.5 text-sm">
+          <ul className="mt-2 space-y-1 text-sm text-[var(--al-text)]">
             {data.recurringTemplates.map((t) => (
               <li key={t.templateKey}>
                 {t.occurrences}× across {t.sessions} session(s)

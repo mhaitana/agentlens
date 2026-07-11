@@ -1,6 +1,39 @@
-// AgentLens Interactive Documentation & Learning Hub Script
+// AgentLens GitHub Pages — navigation, theme, terminal simulator, privacy comparator,
+// rules explorer, screenshot lightbox, and copy-to-clipboard.
+
+const ICONS = {
+  check: `
+    <svg viewBox="0 0 24 24" aria-hidden="true" class="term-icon check-icon">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <path d="m9 12 2 2 4-4"/>
+    </svg>`,
+  cross: `
+    <svg viewBox="0 0 24 24" aria-hidden="true" class="term-icon cross-icon">
+      <path d="M18 6 6 18M6 6l12 12"/>
+    </svg>`,
+  info: `
+    <svg viewBox="0 0 24 24" aria-hidden="true" class="term-icon">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 16v-4M12 8h.01"/>
+    </svg>`,
+  warning: `
+    <svg viewBox="0 0 24 24" aria-hidden="true" class="term-icon">
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <path d="M12 17h.01M12 9v4"/>
+    </svg>`,
+};
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
+  initNavigation();
   initTerminalSimulator();
   initPrivacyComparator();
   initRulesExplorer();
@@ -8,145 +41,217 @@ document.addEventListener("DOMContentLoaded", () => {
   initCopyButtons();
 });
 
-/* Interactive CLI Terminal Simulator */
-function initTerminalSimulator() {
-  const tabs = document.querySelectorAll(".terminal-tab-btn");
-  const body = document.getElementById("terminal-content");
+function initTheme() {
+  const toggle = document.querySelector("[data-theme-toggle]");
+  const html = document.documentElement;
+  const stored = localStorage.getItem("agentlens-theme");
+  const prefersDark =
+    window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-  const simulatedOutputs = {
-    scan: `
-<span class="prompt-symbol">❯</span> <span class="term-cmd">agentlens scan --project my-project</span>
-<span class="term-comment"># Initializing local session scanner...</span>
-<span class="term-highlight">i</span> Discovered 14 session transcripts in ~/.claude/projects/my-project
-<span class="term-highlight">i</span> Parsed 142 tool invocations, 38 git operations, 12 command executions
-<span class="term-success">✔</span> 3 new sessions persisted to local database (~/Library/Application Support/AgentLens/agentlens.db)
-<span class="term-comment"># Computed 34 deterministic recommendation rules (0 external network calls)</span>
-`,
-    report: `
-<span class="prompt-symbol">❯</span> <span class="term-cmd">agentlens report --period week --format terminal</span>
-<span class="term-highlight">AgentLens Analytics Report (Last 7 Days)</span>
-----------------------------------------------------------------------
-Sessions analyzed:       14
-Total active duration:   4h 12m
-Total tool invocations:  384
-Estimated token cost:    $4.82  <span class="term-warning">(Estimated — not an official billing value)</span>
+  function save(theme) {
+    try {
+      localStorage.setItem("agentlens-theme", theme);
+    } catch {
+      /* ignore private-mode / disabled storage */
+    }
+  }
 
-Top Recommendations:
-  • <span class="term-highlight">TOOLS-001</span>: File read 6 times with no intervening edit [Confidence: 94%]
-  • <span class="term-highlight">VERIFY-002</span>: Test suite executed only after 14 file mutations [Confidence: 88%]
-`,
-    doctor: `
-<span class="prompt-symbol">❯</span> <span class="term-cmd">agentlens doctor --dry-run</span>
-<span class="term-highlight">Configuration Doctor Preview</span>
-----------------------------------------------------------------------
-Checking local coding-agent config safe boundaries...
-<span class="term-warning">! FINDING [CFG-PERM-01]</span>: Broad filesystem permissions detected in ~/.claude/settings.json
-  Remediation: Restrict allowlist to specific project roots.
-  Proposed patch: safe-patch-20260711-01.json (requires manual review)
+  function apply(theme) {
+    html.setAttribute("data-theme", theme);
+    save(theme);
+  }
 
-<span class="term-success">✔</span> Safe remediation principle: automaticallyApplicable is FALSE for all findings.
-`,
-    rules: `
-<span class="prompt-symbol">❯</span> <span class="term-cmd">agentlens rules explain TOOLS-001</span>
-<span class="term-highlight">Rule Details: TOOLS-001 (Redundant File Read)</span>
-----------------------------------------------------------------------
-Category:     tools
-Version:      1
-Trigger:      File read ≥ 4 times with no intervening modification
-Confidence:   confidenceForCount(count; base=0.6, per=0.1, cap=0.95)
-Evidence:     Exact file paths, timestamps, read counts
-Remediation:  Cache file context or inspect lines selectively
-Status:       Active (Threshold overridable via config.json)
-`,
-  };
+  const initialTheme = stored || (prefersDark ? "dark" : "light");
+  html.setAttribute("data-theme", initialTheme);
 
-  if (!tabs.length || !body) return;
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      apply(next);
+    });
+  }
+}
 
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      tabs.forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-      const cmd = tab.getAttribute("data-cmd");
-      body.innerHTML = simulatedOutputs[cmd] || simulatedOutputs["scan"];
+function initNavigation() {
+  const toggle = document.querySelector(".nav-toggle");
+  const menu = document.getElementById("nav-menu");
+  if (!toggle || !menu) return;
+
+  toggle.addEventListener("click", () => {
+    const expanded = toggle.getAttribute("aria-expanded") === "true";
+    toggle.setAttribute("aria-expanded", String(!expanded));
+    toggle.setAttribute("aria-label", expanded ? "Open navigation menu" : "Close navigation menu");
+    menu.classList.toggle("is-open", !expanded);
+  });
+
+  menu.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-label", "Open navigation menu");
+      menu.classList.remove("is-open");
     });
   });
 }
 
-/* Privacy Comparator */
+function initTerminalSimulator() {
+  const tabs = document.querySelectorAll(".terminal-tab-btn");
+  const body = document.getElementById("terminal-content");
+  if (!tabs.length || !body) return;
+
+  const simulatedOutputs = {
+    scan: `
+      <p><span class="prompt-symbol">$</span> <span class="term-cmd">agentlens scan --project my-project</span></p>
+      <p class="term-comment"># Initializing local session scanner...</p>
+      <p>${ICONS.info} Discovered 14 session transcripts in ~/.claude/projects/my-project</p>
+      <p>${ICONS.info} Parsed 142 tool invocations, 38 git operations, 12 command executions</p>
+      <p>${ICONS.check} 3 new sessions persisted to local database (~/Library/Application Support/AgentLens/agentlens.db)</p>
+      <p class="term-comment"># Computed 34 deterministic recommendation rules (0 external network calls)</p>
+    `,
+    report: `
+      <p><span class="prompt-symbol">$</span> <span class="term-cmd">agentlens report --period week --format terminal</span></p>
+      <p class="term-highlight">AgentLens Analytics Report (Last 7 Days)</p>
+      <p class="term-comment">----------------------------------------------------------------------</p>
+      <p>Sessions analyzed:       14</p>
+      <p>Total active duration:   4h 12m</p>
+      <p>Total tool invocations:  384</p>
+      <p>Estimated token cost:    $4.82  <span class="term-warning">(Estimated — not an official billing value)</span></p>
+      <br>
+      <p>Top Recommendations:</p>
+      <p>  • <span class="term-highlight">TOOLS-001</span>: File read 6 times with no intervening edit [Confidence: 94%]</p>
+      <p>  • <span class="term-highlight">VERIFY-002</span>: Test suite executed only after 14 file mutations [Confidence: 88%]</p>
+    `,
+    doctor: `
+      <p><span class="prompt-symbol">$</span> <span class="term-cmd">agentlens doctor --dry-run</span></p>
+      <p class="term-highlight">Configuration Doctor Preview</p>
+      <p class="term-comment">----------------------------------------------------------------------</p>
+      <p>Checking local coding-agent config safe boundaries...</p>
+      <p>${ICONS.warning} FINDING [CFG-PERM-01]: Broad filesystem permissions detected in ~/.claude/settings.json</p>
+      <p>  Remediation: Restrict allowlist to specific project roots.</p>
+      <p>  Proposed patch: safe-patch-20260711-01.json (requires manual review)</p>
+      <br>
+      <p>${ICONS.check} Safe remediation principle: automaticallyApplicable is FALSE for all findings.</p>
+    `,
+    rules: `
+      <p><span class="prompt-symbol">$</span> <span class="term-cmd">agentlens rules explain TOOLS-001</span></p>
+      <p class="term-highlight">Rule Details: TOOLS-001 (Redundant File Read)</p>
+      <p class="term-comment">----------------------------------------------------------------------</p>
+      <p>Category:     tools</p>
+      <p>Version:      1</p>
+      <p>Trigger:      File read ≥ 4 times with no intervening modification</p>
+      <p>Confidence:   confidenceForCount(count; base=0.6, per=0.1, cap=0.95)</p>
+      <p>Evidence:     Exact file paths, timestamps, read counts</p>
+      <p>Remediation:  Cache file context or inspect lines selectively</p>
+      <p>Status:       Active (Threshold overridable via config.json)</p>
+    `,
+  };
+
+  const render = (cmd, activeTab) => {
+    body.innerHTML = simulatedOutputs[cmd] || simulatedOutputs["scan"];
+    tabs.forEach((t) => {
+      const selected = t === activeTab;
+      t.classList.toggle("active", selected);
+      t.setAttribute("aria-selected", String(selected));
+    });
+    if (activeTab) {
+      body.setAttribute("aria-labelledby", activeTab.id);
+    }
+  };
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const cmd = tab.getAttribute("data-cmd");
+      render(cmd, tab);
+    });
+  });
+
+  render("scan", tabs[0]);
+}
+
 function initPrivacyComparator() {
   const tabs = document.querySelectorAll(".privacy-tab");
-  const metadataList = document.getElementById("privacy-list-1");
-  const contentList = document.getElementById("privacy-list-2");
+  const title1 = document.getElementById("privacy-title-1");
+  const title2 = document.getElementById("privacy-title-2");
+  const list1 = document.getElementById("privacy-list-1");
+  const list2 = document.getElementById("privacy-list-2");
+  if (!tabs.length || !list1 || !list2) return;
 
   const modes = {
     "metadata-only": {
       title1: "Persisted Locally",
       items1: [
-        '<span class="check-icon">✔</span> Session IDs & exact timestamps',
-        '<span class="check-icon">✔</span> Tool invocation names & durations',
-        '<span class="check-icon">✔</span> Token & cost estimates',
-        '<span class="check-icon">✔</span> File-path cryptographic hashes',
-        '<span class="check-icon">✔</span> Command safety classifications',
+        `${ICONS.check} Session IDs & exact timestamps`,
+        `${ICONS.check} Tool invocation names & durations`,
+        `${ICONS.check} Token & cost estimates`,
+        `${ICONS.check} File-path cryptographic hashes`,
+        `${ICONS.check} Command safety classifications`,
       ],
       title2: "Never Persisted / Stripped",
       items2: [
-        '<span class="cross-icon">✖</span> Raw prompt text or commands',
-        '<span class="cross-icon">✖</span> Source code or file contents',
-        '<span class="cross-icon">✖</span> Environment variables & API keys',
-        '<span class="cross-icon">✖</span> Real home directory paths',
+        `${ICONS.cross} Raw prompt text or commands`,
+        `${ICONS.cross} Source code or file contents`,
+        `${ICONS.cross} Environment variables & API keys`,
+        `${ICONS.cross} Real home directory paths`,
       ],
     },
     "redacted-content": {
       title1: "Persisted Locally (Default)",
       items1: [
-        '<span class="check-icon">✔</span> Redacted prompts & commands',
-        '<span class="check-icon">✔</span> Redacted relative paths',
-        '<span class="check-icon">✔</span> Sanitised tool metadata',
-        '<span class="check-icon">✔</span> Derived prompt quality features',
-        '<span class="check-icon">✔</span> Automated secret redaction pre-write',
+        `${ICONS.check} Redacted prompts & commands`,
+        `${ICONS.check} Redacted relative paths`,
+        `${ICONS.check} Sanitised tool metadata`,
+        `${ICONS.check} Derived prompt quality features`,
+        `${ICONS.check} Automated secret redaction pre-write`,
       ],
       title2: "Never Persisted / Stripped",
       items2: [
-        '<span class="cross-icon">✖</span> Unredacted sensitive identifiers',
-        '<span class="cross-icon">✖</span> Full file source code contents',
-        '<span class="cross-icon">✖</span> Authentication headers or tokens',
-        '<span class="cross-icon">✖</span> Any network cloud transmission',
+        `${ICONS.cross} Unredacted sensitive identifiers`,
+        `${ICONS.cross} Full file source code contents`,
+        `${ICONS.cross} Authentication headers or tokens`,
+        `${ICONS.cross} Any network cloud transmission`,
       ],
     },
     "full-local": {
       title1: "Persisted Locally (Explicit Opt-In)",
       items1: [
-        '<span class="check-icon">✔</span> Full local prompt & command history',
-        '<span class="check-icon">✔</span> Comprehensive local timeline context',
-        '<span class="check-icon">✔</span> Secret detection still actively enforced',
-        '<span class="check-icon">✔</span> Local SQLite storage only (127.0.0.1)',
+        `${ICONS.check} Full local prompt & command history`,
+        `${ICONS.check} Comprehensive local timeline context`,
+        `${ICONS.check} Secret detection still actively enforced`,
+        `${ICONS.check} Local SQLite storage only (127.0.0.1)`,
       ],
       title2: "Never Persisted / Stripped",
       items2: [
-        '<span class="cross-icon">✖</span> Cloud synchronization or telemetry upload',
-        '<span class="cross-icon">✖</span> API keys or detected credentials',
-        '<span class="cross-icon">✖</span> Silent background scanning',
+        `${ICONS.cross} Cloud synchronization or telemetry upload`,
+        `${ICONS.cross} API keys or detected credentials`,
+        `${ICONS.cross} Silent background scanning`,
       ],
     },
   };
 
-  if (!tabs.length || !metadataList || !contentList) return;
+  const render = (mode, activeTab) => {
+    const data = modes[mode];
+    if (!data) return;
+    if (title1) title1.textContent = data.title1;
+    if (title2) title2.textContent = data.title2;
+    list1.innerHTML = data.items1.map((i) => `<li>${i}</li>`).join("");
+    list2.innerHTML = data.items2.map((i) => `<li>${i}</li>`).join("");
+    tabs.forEach((t) => {
+      const selected = t === activeTab;
+      t.classList.toggle("active", selected);
+      t.setAttribute("aria-selected", String(selected));
+    });
+  };
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      tabs.forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
       const mode = tab.getAttribute("data-mode");
-      const data = modes[mode];
-      if (data) {
-        metadataList.innerHTML = data.items1.map((i) => `<li>${i}</li>`).join("");
-        contentList.innerHTML = data.items2.map((i) => `<li>${i}</li>`).join("");
-      }
+      render(mode, tab);
     });
   });
+
+  const active = document.querySelector(".privacy-tab.active") || tabs[0];
+  if (active) render(active.getAttribute("data-mode"), active);
 }
 
-/* Interactive Rules Explorer */
 function initRulesExplorer() {
   const rules = [
     {
@@ -222,31 +327,32 @@ function initRulesExplorer() {
     if (!grid) return;
     const filtered = rules.filter((r) => {
       const matchesCategory = activeCategory === "all" || r.category === activeCategory;
+      const q = searchQuery.toLowerCase();
       const matchesSearch =
-        !searchQuery ||
-        r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.desc.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        r.id.toLowerCase().includes(q) ||
+        r.title.toLowerCase().includes(q) ||
+        r.desc.toLowerCase().includes(q);
       return matchesCategory && matchesSearch;
     });
 
     if (!filtered.length) {
-      grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 2rem;">No matching recommendation rules found.</div>`;
+      grid.innerHTML = `<div class="rules-empty">No matching recommendation rules found.</div>`;
       return;
     }
 
     grid.innerHTML = filtered
       .map(
         (r) => `
-      <div class="rule-card">
-        <div class="rule-top">
-          <span class="rule-id">${r.id}</span>
-          <span class="rule-badge">${r.category}</span>
-        </div>
-        <h4>${r.title}</h4>
-        <p>${r.desc}</p>
-      </div>
-    `,
+          <div class="rule-card">
+            <div class="rule-top">
+              <span class="rule-id">${escapeHtml(r.id)}</span>
+              <span class="rule-badge">${escapeHtml(r.category)}</span>
+            </div>
+            <h4>${escapeHtml(r.title)}</h4>
+            <p>${escapeHtml(r.desc)}</p>
+          </div>
+        `,
       )
       .join("");
   }
@@ -261,8 +367,12 @@ function initRulesExplorer() {
   if (pills.length) {
     pills.forEach((pill) => {
       pill.addEventListener("click", () => {
-        pills.forEach((p) => p.classList.remove("active"));
+        pills.forEach((p) => {
+          p.classList.remove("active");
+          p.setAttribute("aria-checked", "false");
+        });
         pill.classList.add("active");
+        pill.setAttribute("aria-checked", "true");
         activeCategory = pill.getAttribute("data-category");
         renderRules();
       });
@@ -272,7 +382,6 @@ function initRulesExplorer() {
   renderRules();
 }
 
-/* Lightbox Modal */
 function initLightbox() {
   const modal = document.getElementById("lightbox");
   const modalImg = document.getElementById("lightbox-img");
@@ -282,32 +391,48 @@ function initLightbox() {
 
   if (!modal || !modalImg || !cards.length) return;
 
+  const open = (card) => {
+    const img = card.querySelector("img");
+    const title = card.querySelector("h4");
+    if (!img) return;
+    modalImg.src = img.src;
+    modalImg.alt = img.alt || "Screenshot fullscreen";
+    if (modalTitle && title) modalTitle.textContent = title.textContent;
+    modal.classList.add("active");
+    document.body.style.overflow = "hidden";
+    if (closeBtn) closeBtn.focus();
+  };
+
+  const close = () => {
+    modal.classList.remove("active");
+    document.body.style.overflow = "";
+  };
+
   cards.forEach((card) => {
-    card.addEventListener("click", () => {
-      const img = card.querySelector("img");
-      const title = card.querySelector("h4");
-      if (img) {
-        modalImg.src = img.src;
-        if (modalTitle && title) modalTitle.textContent = title.textContent;
-        modal.classList.add("active");
+    card.addEventListener("click", () => open(card));
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open(card);
       }
     });
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
   });
 
   if (closeBtn) {
-    closeBtn.addEventListener("click", () => modal.classList.remove("active"));
+    closeBtn.addEventListener("click", close);
   }
 
   modal.addEventListener("click", (e) => {
-    if (e.target === modal) modal.classList.remove("active");
+    if (e.target === modal) close();
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") modal.classList.remove("active");
+    if (e.key === "Escape" && modal.classList.contains("active")) close();
   });
 }
 
-/* Copy buttons */
 function initCopyButtons() {
   const copyBtns = document.querySelectorAll(".copy-btn");
   const toast = document.getElementById("toast");
@@ -326,7 +451,7 @@ function initCopyButtons() {
     if (!toast) return;
     toast.textContent = msg;
     toast.classList.add("show");
-    setTimeout(() => {
+    window.setTimeout(() => {
       toast.classList.remove("show");
     }, 2500);
   }

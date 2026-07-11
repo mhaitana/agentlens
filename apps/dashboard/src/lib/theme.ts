@@ -1,6 +1,7 @@
 /**
  * Dark/light theme store (§18.1). Persisted to localStorage, applied by
- * toggling `.dark` on <html> (see styles.css). Defaults to the OS preference.
+ * setting `data-theme` on <html> (see styles.css). Defaults to the OS
+ * preference.
  */
 import { useSyncExternalStore } from "react";
 
@@ -21,7 +22,7 @@ function stored(): Theme | null {
 
 function apply(theme: Theme): void {
   if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.setAttribute("data-theme", theme);
 }
 
 let current: Theme = stored() ?? (prefersDark() ? "dark" : "light");
@@ -36,19 +37,21 @@ function getSnapshot(): Theme {
   return current;
 }
 
+function setTheme(t: Theme): void {
+  current = t;
+  apply(t);
+  if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, t);
+  for (const l of listeners) l();
+}
+
 /** Current theme (reactive). */
 export function useTheme(): { theme: Theme; toggle: () => void; set: (t: Theme) => void } {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   return {
     theme,
-    set(t) {
-      current = t;
-      apply(t);
-      if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, t);
-      for (const l of listeners) l();
-    },
+    set: setTheme,
     toggle() {
-      this.set(current === "dark" ? "light" : "dark");
+      setTheme(current === "dark" ? "light" : "dark");
     },
   };
 }

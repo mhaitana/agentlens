@@ -14,6 +14,7 @@
  * no transcript HTML).
  */
 import { useMemo, useState } from "react";
+import { ShieldCheck, AlertTriangle } from "lucide-react";
 import { useDoctor, useApplyDoctorPatch, useRollbackDoctorPatch } from "../../hooks/useApi.js";
 import {
   Badge,
@@ -44,12 +45,15 @@ export function Doctor() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-xl font-semibold">Configuration Doctor</h2>
-        <p className="text-sm text-[var(--al-text-muted)]">
-          Read-only checks of your Claude Code configuration, with safe proposed patches. Nothing is
-          changed without your explicit approval.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">Configuration Doctor</h2>
+          <p className="text-sm text-[var(--al-text-secondary)]">
+            Read-only checks of your Claude Code configuration, with safe proposed patches. Nothing
+            is changed without your explicit approval.
+          </p>
+        </div>
+        {q.data ? <HealthScore score={q.data.report.summary} /> : null}
       </div>
 
       {q.isLoading ? <Spinner label="Inspecting configuration" /> : null}
@@ -103,7 +107,7 @@ export function Doctor() {
       {apply.data ? (
         <Card>
           <CardTitle>Apply result</CardTitle>
-          <ul className="mt-2 space-y-2 text-sm">
+          <ul className="mt-3 space-y-2 text-sm">
             {apply.data.applied.map((r) => (
               <li key={r.patchId} className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -138,7 +142,7 @@ export function Doctor() {
             ))}
           </ul>
           {apply.data.draftsWritten.skills.length + apply.data.draftsWritten.hooks.length > 0 ? (
-            <p className="mt-2 text-xs text-[var(--al-text-muted)]">
+            <p className="mt-3 text-xs text-[var(--al-text-muted)]">
               Drafts written to exports/drafts/ (review only — never installed):{" "}
               {apply.data.draftsWritten.skills.length} skill(s),{" "}
               {apply.data.draftsWritten.hooks.length} hook(s).
@@ -149,7 +153,7 @@ export function Doctor() {
       {rollback.data ? (
         <Card>
           <CardTitle>Rollback result</CardTitle>
-          <p className="mt-2 text-sm">
+          <p className="mt-3 text-sm">
             <Badge tone={rollback.data.result.restored ? "low" : "high"}>
               {rollback.data.result.restored ? "restored" : "not restored"}
             </Badge>{" "}
@@ -157,6 +161,40 @@ export function Doctor() {
           </p>
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+function HealthScore({
+  score,
+}: {
+  score: {
+    total: number;
+    critical: number;
+    warning: number;
+    patches: number;
+    refusedPatches: number;
+  };
+}) {
+  const healthy = score.critical === 0 && score.warning === 0;
+  return (
+    <div className="flex items-center gap-3 rounded-[var(--al-radius-xl)] border border-[var(--al-border)] bg-[var(--al-bg-elevated)] px-4 py-3 shadow-[var(--al-shadow-sm)]">
+      <div
+        className="flex h-10 w-10 items-center justify-center rounded-full"
+        style={{ background: healthy ? "var(--al-accent-weak)" : "var(--al-warning-weak)" }}
+      >
+        {healthy ? (
+          <ShieldCheck size={20} className="text-[var(--al-accent)]" />
+        ) : (
+          <AlertTriangle size={20} className="text-[var(--al-warning)]" />
+        )}
+      </div>
+      <div>
+        <p className="text-xs font-medium text-[var(--al-text-muted)]">Health score</p>
+        <p className="text-sm font-semibold text-[var(--al-text)]">
+          {healthy ? "Healthy" : `${score.critical} critical · ${score.warning} warning`}
+        </p>
+      </div>
     </div>
   );
 }
@@ -195,12 +233,12 @@ function DoctorBody({
         <Stat
           label="Critical"
           value={formatNumber(report.summary.critical)}
-          tone={report.summary.critical > 0 ? "text-red-500" : undefined}
+          tone={report.summary.critical > 0 ? "text-[var(--al-danger)]" : undefined}
         />
         <Stat
           label="Warnings"
           value={formatNumber(report.summary.warning)}
-          tone={report.summary.warning > 0 ? "text-amber-600 dark:text-amber-400" : undefined}
+          tone={report.summary.warning > 0 ? "text-[var(--al-warning)]" : undefined}
         />
         <Stat
           label="Proposed patches"
@@ -212,11 +250,11 @@ function DoctorBody({
       {findingsByScope.length > 0 ? (
         <Card>
           <CardTitle>Findings by scope</CardTitle>
-          <ul className="mt-2 flex flex-wrap gap-3 text-sm">
+          <ul className="mt-3 flex flex-wrap gap-3 text-sm">
             {findingsByScope.map(([scope, count]) => (
               <li key={scope} className="flex items-center gap-1.5">
                 <Badge tone="neutral">{scope}</Badge>
-                <span className="tabular-nums">{count}</span>
+                <span className="tabular-nums font-medium text-[var(--al-text)]">{count}</span>
               </li>
             ))}
           </ul>
@@ -238,7 +276,7 @@ function DoctorBody({
       {report.diagnostics.length > 0 ? (
         <Card>
           <CardTitle>Diagnostics</CardTitle>
-          <ul className="mt-2 space-y-1 text-xs text-[var(--al-text-muted)]">
+          <ul className="mt-3 space-y-1 text-xs text-[var(--al-text-muted)]">
             {report.diagnostics.map((d, i) => (
               <li key={i} className="break-all">
                 <span className="font-mono">{d.path}</span>: {d.message}
@@ -257,7 +295,7 @@ function FindingsCard({ data }: { data: DoctorResponse }) {
     return (
       <Card>
         <CardTitle>Findings</CardTitle>
-        <div className="mt-3">
+        <div className="mt-4">
           <EmptyState title="No findings">Your configuration looks healthy.</EmptyState>
         </div>
       </Card>
@@ -266,17 +304,17 @@ function FindingsCard({ data }: { data: DoctorResponse }) {
   return (
     <Card>
       <CardTitle>Findings</CardTitle>
-      <ul className="mt-3 divide-y divide-[var(--al-border)] text-sm">
+      <ul className="mt-4 divide-y divide-[var(--al-border)] text-sm">
         {findings.map((f) => (
-          <li key={f.id} className="py-2">
+          <li key={f.id} className="py-3">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={severityTone(f.severity)}>{f.severity}</Badge>
               <Badge tone="neutral">{f.family}</Badge>
               <Badge tone="accent">{f.scope}</Badge>
               <span className="font-mono text-xs text-[var(--al-text-muted)]">{f.id}</span>
             </div>
-            <p className="mt-1 font-medium">{f.title}</p>
-            <p className="text-xs text-[var(--al-text-muted)]">{f.detail}</p>
+            <p className="mt-1 font-medium text-[var(--al-text)]">{f.title}</p>
+            <p className="text-xs text-[var(--al-text-secondary)]">{f.detail}</p>
           </li>
         ))}
       </ul>
@@ -305,7 +343,7 @@ function PatchesCard({
     return (
       <Card>
         <CardTitle>Proposed patches</CardTitle>
-        <div className="mt-3">
+        <div className="mt-4">
           <EmptyState title="No patches">No safe patches to propose.</EmptyState>
         </div>
       </Card>
@@ -326,7 +364,7 @@ function PatchesCard({
           </Button>
         ) : null}
       </div>
-      <ul className="mt-3 space-y-3">
+      <ul className="mt-4 space-y-3">
         {patches.map((p) => (
           <PatchRow
             key={p.id}
@@ -362,10 +400,10 @@ function PatchRow({
   const valid =
     v.parses && v.noBypassPermissions && v.noExternalTransmission && v.unrelatedPreserved;
   return (
-    <li className="rounded-md border border-[var(--al-border)] p-3">
+    <li className="rounded-[var(--al-radius-lg)] border border-[var(--al-border)] bg-[var(--al-bg-inset)] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-xs">{patch.id}</span>
+          <span className="font-mono text-xs text-[var(--al-text-muted)]">{patch.id}</span>
           {patch.refused ? (
             <Badge tone="high">refused</Badge>
           ) : (
@@ -387,8 +425,8 @@ function PatchRow({
         </div>
       </div>
 
-      <p className="mt-2 text-sm font-medium">{patch.summary}</p>
-      <p className="mt-1 text-sm text-[var(--al-text-muted)]">{patch.impact}</p>
+      <p className="mt-2 text-sm font-medium text-[var(--al-text)]">{patch.summary}</p>
+      <p className="mt-1 text-sm text-[var(--al-text-secondary)]">{patch.impact}</p>
       {patch.targetFile ? (
         <p className="mt-1 break-all font-mono text-xs text-[var(--al-text-muted)]">
           target: {patch.targetFile}
@@ -396,18 +434,16 @@ function PatchRow({
       ) : null}
 
       {patch.refused && patch.refusalReason ? (
-        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-          Refused: {patch.refusalReason}
-        </p>
+        <p className="mt-3 text-xs text-[var(--al-warning)]">Refused: {patch.refusalReason}</p>
       ) : null}
 
       {patch.diff ? (
-        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded bg-[var(--al-surface-2)] p-2 font-mono text-xs">
+        <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-[var(--al-radius-md)] border border-[var(--al-border)] bg-[var(--al-bg-elevated)] p-3 font-mono text-xs text-[var(--al-text)]">
           {patch.diff}
         </pre>
       ) : null}
 
-      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[var(--al-text-muted)]">
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[var(--al-text-muted)]">
         <span>
           validation: <Badge tone={valid ? "low" : "high"}>{valid ? "passes" : "fails"}</Badge>
         </span>

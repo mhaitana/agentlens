@@ -27,6 +27,7 @@ import {
   formatProvenanced,
   formatTokens,
 } from "../../lib/format.js";
+import { cn } from "../../lib/cn.js";
 import {
   Card,
   CardTitle,
@@ -46,10 +47,10 @@ const PERIODS = [
 ];
 
 const COMPLETION_COLORS: Record<string, string> = {
-  completed: "#22c55e",
-  interrupted: "#f59e0b",
-  failed: "#ef4444",
-  unknown: "#94a3b8",
+  completed: "var(--al-success)",
+  interrupted: "var(--al-warning)",
+  failed: "var(--al-danger)",
+  unknown: "var(--al-text-muted)",
 };
 
 export function Overview() {
@@ -58,25 +59,25 @@ export function Overview() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Overview</h2>
-          <p className="text-sm text-[var(--al-text-muted)]">
+          <h2 className="text-xl font-semibold tracking-tight">Overview</h2>
+          <p className="text-sm text-[var(--al-text-secondary)]">
             Aggregate usage and behaviour across your local sessions.
           </p>
         </div>
-        <div className="flex gap-1 rounded-md border border-[var(--al-border)] bg-[var(--al-surface)] p-1">
+        <div className="flex gap-1 rounded-[var(--al-radius-lg)] border border-[var(--al-border)] bg-[var(--al-bg-elevated)] p-1 shadow-[var(--al-shadow-sm)]">
           {PERIODS.map((p) => (
             <button
               key={p.key}
               onClick={() => setPeriod(p.key)}
               aria-pressed={period === p.key}
-              className={
-                "rounded px-3 py-1 text-sm transition-colors " +
-                (period === p.key
-                  ? "bg-[var(--al-accent)] text-white"
-                  : "text-[var(--al-text-muted)] hover:text-[var(--al-text)]")
-              }
+              className={cn(
+                "rounded-[var(--al-radius-md)] px-3 py-1.5 text-sm font-medium transition-all duration-150",
+                period === p.key
+                  ? "bg-[var(--al-accent)] text-[var(--al-text-inverted)] shadow-[var(--al-shadow-sm)]"
+                  : "text-[var(--al-text-muted)] hover:bg-[var(--al-bg-hover)] hover:text-[var(--al-text)]",
+              )}
             >
               {p.label}
             </button>
@@ -184,35 +185,56 @@ function ModelUsageChart({ snap }: { snap: AnalyticsSnapshot }) {
   return (
     <Card>
       <CardTitle>Requests by model</CardTitle>
-      <div className="mt-3 h-64">
+      <div className="mt-4 h-64">
         {data.length === 0 ? (
           <EmptyState title="No model usage">No model requests recorded in this period.</EmptyState>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--al-border)" />
-              <XAxis dataKey="model" tick={{ fontSize: 11 }} stroke="var(--al-text-muted)" />
-              <YAxis tick={{ fontSize: 11 }} stroke="var(--al-text-muted)" allowDecimals={false} />
+            <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: -8 }}>
+              <defs>
+                <linearGradient id="modelBar" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--al-accent)" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="var(--al-accent)" stopOpacity={0.55} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--al-border)" vertical={false} />
+              <XAxis
+                dataKey="model"
+                tick={{ fill: "var(--al-text-muted)", fontSize: 11 }}
+                stroke="var(--al-border)"
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: "var(--al-text-muted)", fontSize: 11 }}
+                stroke="var(--al-border)"
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
               <Tooltip
+                cursor={{ fill: "var(--al-bg-hover)", opacity: 0.4 }}
                 contentStyle={{
-                  background: "var(--al-surface)",
+                  background: "var(--al-bg-elevated)",
                   border: "1px solid var(--al-border)",
-                  borderRadius: 8,
+                  borderRadius: "var(--al-radius-lg)",
                   fontSize: 12,
+                  color: "var(--al-text)",
                 }}
               />
-              <Bar dataKey="requests" fill="var(--al-accent)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="requests" fill="url(#modelBar)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
       </div>
-      <p className="mt-2 text-xs text-[var(--al-text-muted)]">{COST_ESTIMATE_LABEL}</p>
+      <p className="mt-3 text-xs text-[var(--al-text-muted)]">{COST_ESTIMATE_LABEL}</p>
     </Card>
   );
 }
 
 function CompletionChart({ snap }: { snap: AnalyticsSnapshot }) {
   const c = snap.completion;
+  const total = c.completed + c.interrupted + c.failed + c.unknown;
   const data = [
     { name: "completed", value: c.completed, color: COMPLETION_COLORS.completed },
     { name: "interrupted", value: c.interrupted, color: COMPLETION_COLORS.interrupted },
@@ -223,7 +245,7 @@ function CompletionChart({ snap }: { snap: AnalyticsSnapshot }) {
   return (
     <Card>
       <CardTitle>Session completion</CardTitle>
-      <div className="mt-3 h-64">
+      <div className="mt-4 h-64">
         {data.length === 0 ? (
           <EmptyState title="No sessions">No completed sessions to summarise.</EmptyState>
         ) : (
@@ -235,9 +257,11 @@ function CompletionChart({ snap }: { snap: AnalyticsSnapshot }) {
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={2}
+                innerRadius={56}
+                outerRadius={84}
+                paddingAngle={3}
+                stroke="var(--al-bg-elevated)"
+                strokeWidth={2}
               >
                 {data.map((d) => (
                   <Cell key={d.name} fill={d.color} />
@@ -245,23 +269,33 @@ function CompletionChart({ snap }: { snap: AnalyticsSnapshot }) {
               </Pie>
               <Tooltip
                 contentStyle={{
-                  background: "var(--al-surface)",
+                  background: "var(--al-bg-elevated)",
                   border: "1px solid var(--al-border)",
-                  borderRadius: 8,
+                  borderRadius: "var(--al-radius-lg)",
                   fontSize: 12,
+                  color: "var(--al-text)",
                 }}
               />
             </PieChart>
           </ResponsiveContainer>
         )}
       </div>
-      <ul className="mt-2 flex flex-wrap gap-3 text-xs text-[var(--al-text-muted)]">
-        {data.map((d) => (
-          <li key={d.name} className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: d.color }} />
-            {d.name}: {d.value}
-          </li>
-        ))}
+      <ul className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--al-text-secondary)]">
+        {data.map((d) => {
+          const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+          return (
+            <li key={d.name} className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-sm"
+                style={{ background: d.color }}
+              />
+              <span className="font-medium capitalize">{d.name}</span>
+              <span className="tabular-nums text-[var(--al-text-muted)]">
+                {d.value} ({pct}%)
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </Card>
   );
@@ -273,17 +307,24 @@ function ToolUsageCard({ snap }: { snap: AnalyticsSnapshot }) {
     <Card>
       <CardTitle>Most-used tools</CardTitle>
       {tools.length === 0 ? (
-        <div className="mt-3">
+        <div className="mt-4">
           <EmptyState title="No tool calls">No tool usage recorded in this period.</EmptyState>
         </div>
       ) : (
-        <ul className="mt-3 divide-y divide-[var(--al-border)] text-sm">
+        <ul className="mt-4 divide-y divide-[var(--al-border)] text-sm">
           {tools.map((tool) => (
-            <li key={tool.toolName} className="flex items-center justify-between py-2">
-              <span className="font-mono">{tool.toolName}</span>
-              <span className="flex items-center gap-3 tabular-nums text-[var(--al-text-muted)]">
+            <li key={tool.toolName} className="flex items-center justify-between py-2.5">
+              <span className="font-mono text-[var(--al-text)]">{tool.toolName}</span>
+              <span className="flex items-center gap-3 tabular-nums text-[var(--al-text-secondary)]">
                 <span>{formatNumber(tool.calls)} calls</span>
-                <span className={tool.failureRate > 0.3 ? "text-red-500" : ""}>
+                <span
+                  className={cn(
+                    "font-medium",
+                    tool.failureRate > 0.3
+                      ? "text-[var(--al-danger)]"
+                      : "text-[var(--al-text-muted)]",
+                  )}
+                >
                   {formatPct(tool.failureRate)} fail
                 </span>
               </span>
@@ -308,26 +349,35 @@ function CompletenessCard({ snap }: { snap: AnalyticsSnapshot }) {
     <Card>
       <CardTitle>Data completeness</CardTitle>
       {total === 0 ? (
-        <div className="mt-3">
+        <div className="mt-4">
           <EmptyState title="No sessions">
             Imported sessions will be assessed for completeness here.
           </EmptyState>
         </div>
       ) : (
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="mt-4 space-y-3 text-sm">
           {flags.map(([label, n]) => {
             const pct = total > 0 ? Math.round((n / total) * 100) : 0;
             const incomplete = label !== "complete" && n > 0;
             return (
-              <li key={label} className="flex flex-col gap-1">
+              <li key={label} className="flex flex-col gap-1.5">
                 <span className="flex justify-between">
-                  <span className="text-[var(--al-text-muted)]">{label}</span>
-                  <span className="tabular-nums">
+                  <span className="capitalize text-[var(--al-text-secondary)]">{label}</span>
+                  <span className="tabular-nums font-medium text-[var(--al-text)]">
                     {n} ({pct}%)
                   </span>
                 </span>
+                <span className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--al-bg-inset)]">
+                  <span
+                    className={cn(
+                      "block h-full rounded-full transition-all",
+                      incomplete ? "bg-[var(--al-warning)]" : "bg-[var(--al-accent)]",
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                </span>
                 {incomplete ? (
-                  <span className="text-xs text-amber-600 dark:text-amber-400">
+                  <span className="text-xs text-[var(--al-warning)]">
                     Some metrics may be inferred — treat as estimates.
                   </span>
                 ) : null}

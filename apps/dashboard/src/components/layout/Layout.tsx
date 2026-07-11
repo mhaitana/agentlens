@@ -10,6 +10,7 @@ import {
   Lightbulb,
   Moon,
   Radio,
+  ScanSearch,
   Settings2,
   ShieldCheck,
   Stethoscope,
@@ -43,13 +44,20 @@ export function Layout({ children }: { children: ReactNode }) {
   const status = useStatus();
 
   return (
-    <div className="flex h-full min-h-0">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-[var(--al-border)] bg-[var(--al-surface)]">
+    <div className="flex h-full min-h-0 bg-[var(--al-bg-base)]">
+      <aside className="flex w-60 shrink-0 flex-col border-r border-[var(--al-border)] bg-[var(--al-bg-elevated)] shadow-[var(--al-shadow-sm)]">
         <div className="flex items-center gap-2 px-4 py-4">
-          <span className="text-lg">🔍</span>
-          <span className="font-semibold tracking-tight">AgentLens</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-[var(--al-radius-md)] bg-[var(--al-accent-weak)] text-[var(--al-accent)]">
+            <ScanSearch size={20} aria-hidden="true" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-display text-lg font-semibold tracking-tight">AgentLens</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--al-text-muted)]">
+              Local-first
+            </span>
+          </div>
         </div>
-        <nav className="flex-1 px-2" aria-label="Primary">
+        <nav className="flex-1 px-3" aria-label="Primary">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = route.name === item.name;
@@ -59,13 +67,19 @@ export function Layout({ children }: { children: ReactNode }) {
                 onClick={() => navigate(item.name)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "mb-0.5 flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+                  "relative mb-0.5 flex w-full items-center gap-3 rounded-[var(--al-radius-md)] px-3 py-2 text-sm font-medium transition-all duration-150",
                   active
-                    ? "bg-[var(--al-accent-weak)] font-medium text-[var(--al-accent)]"
-                    : "text-[var(--al-text-muted)] hover:bg-[var(--al-surface-2)] hover:text-[var(--al-text)]",
+                    ? "bg-[var(--al-accent-weak)] text-[var(--al-accent)]"
+                    : "text-[var(--al-text-secondary)] hover:bg-[var(--al-bg-hover)] hover:text-[var(--al-text)]",
                 )}
               >
-                <Icon size={16} aria-hidden="true" />
+                {active ? (
+                  <span
+                    className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-[var(--al-accent)]"
+                    aria-hidden="true"
+                  />
+                ) : null}
+                <Icon size={18} aria-hidden="true" />
                 {item.label}
               </button>
             );
@@ -73,9 +87,9 @@ export function Layout({ children }: { children: ReactNode }) {
         </nav>
         <div className="border-t border-[var(--al-border)] p-3 text-xs text-[var(--al-text-muted)]">
           {status.data ? (
-            <div className="flex flex-col gap-1">
-              <span>
-                Privacy:{" "}
+            <div className="flex flex-col gap-2">
+              <span className="flex items-center gap-2">
+                Privacy:
                 <Badge tone={privacyTone(status.data.privacyMode)}>{status.data.privacyMode}</Badge>
               </span>
               <span>
@@ -87,13 +101,13 @@ export function Layout({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--al-border)] bg-[var(--al-surface)] px-6 py-3">
-          <h1 className="text-sm font-medium text-[var(--al-text-muted)]">
+        <header className="flex items-center justify-between border-b border-[var(--al-border)] bg-[var(--al-bg-elevated)] px-6 py-3 shadow-[var(--al-shadow-sm)]">
+          <h1 className="text-sm font-medium text-[var(--al-text-secondary)]">
             Local-first workflow intelligence for Claude Code
           </h1>
           <button
             onClick={toggle}
-            className="rounded-md p-1.5 text-[var(--al-text-muted)] hover:bg-[var(--al-surface-2)] hover:text-[var(--al-text)]"
+            className="rounded-[var(--al-radius-md)] p-2 text-[var(--al-text-secondary)] transition-colors hover:bg-[var(--al-bg-hover)] hover:text-[var(--al-text)]"
             aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
             title="Toggle theme"
           >

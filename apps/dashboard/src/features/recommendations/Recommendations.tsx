@@ -8,6 +8,7 @@
  * dashboard shows previews read-only.
  */
 import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   useRecommendations,
   useDismissRecommendation,
@@ -30,10 +31,10 @@ export function Recommendations() {
   const busy = dismiss.isPending || restore.isPending || resolve.isPending || reopen.isPending;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-semibold">Recommendations</h2>
-        <p className="text-sm text-[var(--al-text-muted)]">
+        <h2 className="text-xl font-semibold tracking-tight">Recommendations</h2>
+        <p className="text-sm text-[var(--al-text-secondary)]">
           Evidence-backed findings from the rule engine. Every recommendation links to the behaviour
           that triggered it. Dismissed or resolved advice resurfaces only when new evidence changes
           it.
@@ -48,7 +49,7 @@ export function Recommendations() {
             Run a scan to populate metrics, or adjust the minimum confidence threshold in settings.
           </EmptyState>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {q.data.map((r) => (
               <RecommendationCard
                 key={r.id}
@@ -91,140 +92,151 @@ function RecommendationCard({
   const inactive = dismissed || resolved;
 
   return (
-    <Card>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={severityTone(rec.severity)}>{rec.severity}</Badge>
-            <Badge tone="accent">{rec.category}</Badge>
-            <span className="font-mono text-xs text-[var(--al-text-muted)]">{rec.ruleId}</span>
-            {dismissed ? <Badge tone="neutral">dismissed</Badge> : null}
-            {resolved ? <Badge tone="low">resolved</Badge> : null}
+    <Card className="relative overflow-hidden">
+      <span
+        className="absolute left-0 top-0 h-full w-1"
+        style={{ backgroundColor: severityColor(rec.severity) }}
+        aria-hidden="true"
+      />
+      <div className="pl-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={severityTone(rec.severity)}>{rec.severity}</Badge>
+              <Badge tone="accent">{rec.category}</Badge>
+              <span className="font-mono text-xs text-[var(--al-text-muted)]">{rec.ruleId}</span>
+              {dismissed ? <Badge tone="neutral">dismissed</Badge> : null}
+              {resolved ? <Badge tone="low">resolved</Badge> : null}
+            </div>
+            <h3 className="mt-2 font-semibold text-[var(--al-text)]">{rec.title}</h3>
+            <p className="mt-1 text-sm text-[var(--al-text-secondary)]">{rec.summary}</p>
+            {rec.sessionId ? (
+              <button
+                className="mt-1 text-xs font-medium text-[var(--al-accent)] hover:underline"
+                onClick={() => navigate("session", { id: rec.sessionId ?? "" })}
+              >
+                View related session →
+              </button>
+            ) : rec.projectId ? (
+              <button
+                className="mt-1 text-xs font-medium text-[var(--al-accent)] hover:underline"
+                onClick={() => navigate("sessions", { projectId: rec.projectId ?? "" })}
+              >
+                View related sessions →
+              </button>
+            ) : null}
           </div>
-          <h3 className="mt-2 font-semibold">{rec.title}</h3>
-          <p className="mt-1 text-sm text-[var(--al-text-muted)]">{rec.summary}</p>
-          {/* Drill into the evidence: a session-scoped rec links straight to its
-             session; a project/window-scoped rec (the common case — rules emit
-             project or window scope, not session scope) links to the project's
-             sessions list via a projectId deep link. */}
-          {rec.sessionId ? (
-            <button
-              className="mt-1 text-xs text-[var(--al-accent)] hover:underline"
-              onClick={() => navigate("session", { id: rec.sessionId ?? "" })}
-            >
-              View related session →
-            </button>
-          ) : rec.projectId ? (
-            <button
-              className="mt-1 text-xs text-[var(--al-accent)] hover:underline"
-              onClick={() => navigate("sessions", { projectId: rec.projectId ?? "" })}
-            >
-              View related sessions →
-            </button>
-          ) : null}
+          <ConfidenceBadge confidence={rec.confidence} />
         </div>
-        <ConfidenceBadge confidence={rec.confidence} />
-      </div>
 
-      <p className="mt-3 text-sm">{rec.explanation}</p>
+        <p className="mt-3 text-sm text-[var(--al-text)]">{rec.explanation}</p>
 
-      {evidence.length > 0 ? (
-        <div className="mt-3">
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="text-xs font-medium text-[var(--al-accent)] hover:underline"
-            aria-expanded={expanded}
-          >
-            {expanded ? "Hide evidence" : `Show evidence (${evidence.length})`}
-          </button>
-          {expanded ? (
-            <ul className="mt-2 space-y-2 border-l-2 border-[var(--al-border)] pl-3">
-              {evidence.map((ev, i) => (
-                <li key={i} className="text-sm">
-                  <p>{ev.description}</p>
-                  {ev.kind ? (
-                    <p className="font-mono text-xs text-[var(--al-text-muted)]">kind: {ev.kind}</p>
-                  ) : null}
-                  {Array.isArray(ev.metrics) && ev.metrics.length > 0 ? (
-                    <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-[var(--al-text-muted)]">
-                      {ev.metrics.map((m, j) => (
-                        <li key={j}>
-                          {m.label}: <span className="tabular-nums">{String(m.value)}</span>{" "}
-                          <span className="opacity-60">({m.provenance})</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
+        {evidence.length > 0 ? (
+          <div className="mt-4">
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--al-accent)] hover:underline"
+              aria-expanded={expanded}
+            >
+              {expanded ? "Hide evidence" : `Show evidence (${evidence.length})`}
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {expanded ? (
+              <ul className="mt-3 space-y-3 border-l-2 border-[var(--al-border)] pl-4">
+                {evidence.map((ev, i) => (
+                  <li key={i} className="text-sm">
+                    <p className="text-[var(--al-text)]">{ev.description}</p>
+                    {ev.kind ? (
+                      <p className="font-mono text-xs text-[var(--al-text-muted)]">
+                        kind: {ev.kind}
+                      </p>
+                    ) : null}
+                    {Array.isArray(ev.metrics) && ev.metrics.length > 0 ? (
+                      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--al-text-secondary)]">
+                        {ev.metrics.map((m, j) => (
+                          <li key={j}>
+                            {m.label}:{" "}
+                            <span className="tabular-nums text-[var(--al-text)]">
+                              {String(m.value)}
+                            </span>{" "}
+                            <span className="text-[var(--al-text-muted)]">({m.provenance})</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
 
-      {impact || remediation ? (
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {impact ? (
-            <div>
-              <h4 className="text-xs font-semibold uppercase text-[var(--al-text-muted)]">
-                Estimated impact
-              </h4>
-              <ImpactSummary impact={impact} />
-              <p className="mt-1 text-xs text-[var(--al-text-muted)]">
-                Methodology: {impact.methodology}
-              </p>
-            </div>
-          ) : null}
-          {remediation ? (
-            <div>
-              <h4 className="text-xs font-semibold uppercase text-[var(--al-text-muted)]">
-                Proposed remediation
-              </h4>
-              <Badge tone="neutral">{remediation.type}</Badge>
-              <pre className="mt-1 overflow-auto whitespace-pre-wrap rounded bg-[var(--al-surface-2)] p-2 text-xs">
-                {remediation.preview}
-              </pre>
-              {remediation.targetPath ? (
-                <p className="mt-1 break-all font-mono text-xs text-[var(--al-text-muted)]">
-                  {remediation.targetPath}
+        {impact || remediation ? (
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {impact ? (
+              <div className="rounded-[var(--al-radius-md)] bg-[var(--al-bg-inset)] p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
+                  Estimated impact
+                </h4>
+                <ImpactSummary impact={impact} />
+                <p className="mt-2 text-xs text-[var(--al-text-muted)]">
+                  Methodology: {impact.methodology}
                 </p>
-              ) : null}
-              <p className="mt-1 text-xs text-[var(--al-text-muted)]">
-                {remediation.automaticallyApplicable
-                  ? "Could be auto-applied — but still requires your approval."
-                  : "Requires manual action. Never applied automatically."}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+              </div>
+            ) : null}
+            {remediation ? (
+              <div className="rounded-[var(--al-radius-md)] bg-[var(--al-bg-inset)] p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]">
+                  Proposed remediation
+                </h4>
+                <Badge tone="neutral" className="mt-1">
+                  {remediation.type}
+                </Badge>
+                <pre className="mt-2 overflow-auto whitespace-pre-wrap rounded-[var(--al-radius-md)] border border-[var(--al-border)] bg-[var(--al-bg-elevated)] p-3 text-xs text-[var(--al-text)]">
+                  {remediation.preview}
+                </pre>
+                {remediation.targetPath ? (
+                  <p className="mt-2 break-all font-mono text-xs text-[var(--al-text-muted)]">
+                    {remediation.targetPath}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs text-[var(--al-text-secondary)]">
+                  {remediation.automaticallyApplicable
+                    ? "Could be auto-applied — but still requires your approval."
+                    : "Requires manual action. Never applied automatically."}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
-      <div className="mt-3 flex items-center justify-between">
-        <span className="text-xs text-[var(--al-text-muted)]">
-          Updated {formatRelative(rec.updatedAt)}
-        </span>
-        <div className="flex gap-2">
-          {inactive ? (
-            <>
-              <Button size="sm" variant="ghost" onClick={onReopen} disabled={busy}>
-                Reopen
-              </Button>
-              {dismissed ? (
-                <Button size="sm" variant="subtle" onClick={onRestore} disabled={busy}>
-                  Restore
+        <div className="mt-4 flex items-center justify-between border-t border-[var(--al-border)] pt-3">
+          <span className="text-xs text-[var(--al-text-muted)]">
+            Updated {formatRelative(rec.updatedAt)}
+          </span>
+          <div className="flex gap-2">
+            {inactive ? (
+              <>
+                <Button size="sm" variant="ghost" onClick={onReopen} disabled={busy}>
+                  Reopen
                 </Button>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <Button size="sm" variant="subtle" onClick={onDismiss} disabled={busy}>
-                Dismiss
-              </Button>
-              <Button size="sm" variant="ghost" onClick={onResolve} disabled={busy}>
-                Resolve
-              </Button>
-            </>
-          )}
+                {dismissed ? (
+                  <Button size="sm" variant="subtle" onClick={onRestore} disabled={busy}>
+                    Restore
+                  </Button>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <Button size="sm" variant="subtle" onClick={onDismiss} disabled={busy}>
+                  Dismiss
+                </Button>
+                <Button size="sm" variant="ghost" onClick={onResolve} disabled={busy}>
+                  Resolve
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </Card>
@@ -244,11 +256,11 @@ function ImpactSummary({ impact }: { impact: ImpactShape }) {
     ]);
   if (rows.length === 0) return null;
   return (
-    <ul className="mt-1 space-y-0.5 text-sm">
+    <ul className="mt-2 space-y-1 text-sm">
       {rows.map(([label, val]) => (
         <li key={label} className="flex justify-between">
-          <span className="text-[var(--al-text-muted)]">{label}</span>
-          <span className="tabular-nums">{val}</span>
+          <span className="text-[var(--al-text-secondary)]">{label}</span>
+          <span className="tabular-nums font-medium text-[var(--al-text)]">{val}</span>
         </li>
       ))}
     </ul>
@@ -289,5 +301,22 @@ function severityTone(sev: string): "neutral" | "low" | "medium" | "high" | "cri
       return "info";
     default:
       return "neutral";
+  }
+}
+
+function severityColor(sev: string): string {
+  switch (sev) {
+    case "critical":
+      return "var(--al-danger)";
+    case "high":
+      return "var(--al-warning)";
+    case "medium":
+      return "var(--al-warning)";
+    case "low":
+      return "var(--al-info)";
+    case "info":
+      return "var(--al-accent)";
+    default:
+      return "var(--al-border)";
   }
 }

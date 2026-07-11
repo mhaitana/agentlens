@@ -174,7 +174,7 @@ describe("AgentLens dashboard", () => {
       0,
     );
     // Provenance tags are rendered.
-    expect(screen.getAllByText(/\(exact\)/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\bexact\b/).length).toBeGreaterThan(0);
     // The estimated cost stat value.
     expect(screen.getByText("$0.42")).toBeTruthy();
   });

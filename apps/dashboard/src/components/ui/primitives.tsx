@@ -15,7 +15,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border border-[var(--al-border)] bg-[var(--al-surface)] p-4",
+        "rounded-lg border border-[var(--al-border)] bg-[var(--al-bg-elevated)] p-[var(--al-space-5)] shadow-[var(--al-shadow-sm)] transition-shadow !rounded-[var(--al-radius-lg)]",
         className,
       )}
       {...rest}
@@ -29,7 +29,7 @@ export function CardTitle({ children, className }: { children: ReactNode; classN
   return (
     <h2
       className={cn(
-        "text-sm font-semibold text-[var(--al-text-muted)] uppercase tracking-wide",
+        "text-xs font-semibold uppercase tracking-wide text-[var(--al-text-muted)]",
         className,
       )}
     >
@@ -38,18 +38,34 @@ export function CardTitle({ children, className }: { children: ReactNode; classN
   );
 }
 
-type Variant = "primary" | "ghost" | "danger" | "subtle";
+export function CardHeader({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn("mb-[var(--al-space-3)] flex items-center gap-[var(--al-space-2)]", className)}
+    >
+      {children}
+    </div>
+  );
+}
+
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "subtle";
 type Size = "sm" | "md";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-[var(--al-accent)] text-white hover:opacity-90",
-  ghost: "border border-[var(--al-border)] hover:bg-[var(--al-surface-2)]",
-  danger: "border border-red-400/60 text-red-500 hover:bg-red-500/10",
-  subtle: "text-[var(--al-text-muted)] hover:text-[var(--al-text)]",
+  primary:
+    "bg-[var(--al-accent)] text-[var(--al-text-inverted)] hover:bg-[var(--al-accent-hover)] shadow-[var(--al-shadow-sm)]",
+  secondary:
+    "bg-[var(--al-bg-inset)] text-[var(--al-text)] border border-[var(--al-border)] hover:bg-[var(--al-bg-hover)]",
+  ghost:
+    "border border-[var(--al-border)] text-[var(--al-text)] hover:bg-[var(--al-bg-hover)] hover:border-[var(--al-border-strong)]",
+  danger:
+    "border border-[var(--al-danger)]/50 text-[var(--al-danger)] hover:bg-[var(--al-danger-weak)]",
+  subtle:
+    "text-[var(--al-text-secondary)] hover:text-[var(--al-text)] hover:bg-[var(--al-bg-hover)]",
 };
 const SIZES: Record<Size, string> = {
-  sm: "px-2.5 py-1 text-xs",
-  md: "px-3.5 py-1.5 text-sm",
+  sm: "px-2.5 py-1.5 text-xs",
+  md: "px-3.5 py-2 text-sm",
 };
 
 export function Button({
@@ -67,7 +83,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-1.5 rounded-[var(--al-radius-md)] font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]",
         VARIANTS[variant],
         SIZES[size],
         className,
@@ -81,12 +97,12 @@ export function Button({
 
 type Tone = "neutral" | "info" | "low" | "medium" | "high" | "critical" | "accent";
 const TONES: Record<Tone, string> = {
-  neutral: "bg-[var(--al-surface-2)] text-[var(--al-text-muted)] border-[var(--al-border)]",
-  info: "bg-blue-500/10 text-blue-500 border-blue-500/30",
-  low: "bg-slate-500/10 text-slate-500 border-slate-500/30",
-  medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
-  high: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30",
-  critical: "bg-red-500/10 text-red-500 border-red-500/30",
+  neutral: "bg-[var(--al-bg-inset)] text-[var(--al-text-secondary)] border-[var(--al-border)]",
+  info: "bg-[var(--al-info-weak)] text-[var(--al-info)] border-[var(--al-info)]/30",
+  low: "bg-[var(--al-bg-inset)] text-[var(--al-text-muted)] border-[var(--al-border)]",
+  medium: "bg-[var(--al-warning-weak)] text-[var(--al-warning)] border-[var(--al-warning)]/30",
+  high: "bg-[var(--al-warning-weak)] text-[var(--al-warning)] border-[var(--al-warning)]/30",
+  critical: "bg-[var(--al-danger-weak)] text-[var(--al-danger)] border-[var(--al-danger)]/30",
   accent: "bg-[var(--al-accent-weak)] text-[var(--al-accent)] border-transparent",
 };
 
@@ -102,7 +118,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-[var(--al-radius-full)] border px-2 py-0.5 text-xs font-medium",
         TONES[tone],
         className,
       )}
@@ -125,9 +141,11 @@ export function Stat({
   tone?: string;
 }) {
   return (
-    <Card className="flex flex-col gap-1">
+    <Card className="flex flex-col justify-between gap-1">
       <span className="text-xs font-medium text-[var(--al-text-muted)]">{label}</span>
-      <span className={cn("text-2xl font-semibold tabular-nums", tone)}>{value}</span>
+      <span className={cn("text-2xl font-semibold tabular-nums tracking-tight", tone)}>
+        {value}
+      </span>
       {hint ? <span className="text-xs text-[var(--al-text-muted)]">{hint}</span> : null}
     </Card>
   );
@@ -142,7 +160,7 @@ export function Spinner({ label = "Loading" }: { label?: string }) {
       aria-live="polite"
     >
       <span
-        className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--al-border)] border-t-[var(--al-accent)]"
+        className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--al-border-strong)] border-t-[var(--al-accent)]"
         aria-hidden="true"
       />
       <span className="text-sm">{label}…</span>
@@ -157,9 +175,9 @@ export function ErrorState({ error }: { error: unknown }) {
   return (
     <div
       role="alert"
-      className="rounded-md border border-red-500/40 bg-red-500/5 p-3 text-sm text-red-500"
+      className="rounded-[var(--al-radius-lg)] border border-[var(--al-danger)]/40 bg-[var(--al-danger-weak)] p-4 text-sm text-[var(--al-danger)]"
     >
-      <p className="font-medium">Something went wrong</p>
+      <p className="font-semibold">Something went wrong</p>
       <p className="mt-1 break-words">{msg}</p>
     </div>
   );
@@ -176,9 +194,9 @@ export function EmptyState({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--al-border)] p-8 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-[var(--al-radius-lg)] border border-dashed border-[var(--al-border)] bg-[var(--al-bg-inset)] p-8 text-center">
       {icon ? <div className="text-[var(--al-text-muted)]">{icon}</div> : null}
-      <p className="text-sm font-medium">{title}</p>
+      <p className="text-sm font-medium text-[var(--al-text)]">{title}</p>
       {children ? <p className="max-w-md text-sm text-[var(--al-text-muted)]">{children}</p> : null}
     </div>
   );
@@ -188,10 +206,11 @@ export function EmptyState({
 export function ProvenanceTag({ provenance }: { provenance: string }) {
   return (
     <span
-      className="text-xs text-[var(--al-text-muted)]"
+      className="inline-flex items-center gap-1 text-xs text-[var(--al-text-muted)]"
       title={`How this value was derived: ${provenance}`}
     >
-      ({provenance})
+      <span className="inline-block h-1 w-1 rounded-full bg-[var(--al-text-muted)]" />
+      {provenance}
     </span>
   );
 }

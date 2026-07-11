@@ -14,14 +14,42 @@
  * as React children (§19.4).
  */
 import { useState } from "react";
-import { Download, Plus, Trash2, X } from "lucide-react";
+import { Download, Plus, Trash2, X, Shield, Eye, Database, Lock } from "lucide-react";
 import { usePrivacy, usePurgeData, useExportData, useUpdateSetting } from "../../hooks/useApi.js";
+import { cn } from "../../lib/cn.js";
 import type { PrivacyMode } from "../../lib/types.js";
 import { Badge, Card, CardTitle, ErrorState, Spinner } from "../../components/ui/primitives.js";
-import { Button, ConfirmDialog, Field, Select, TextInput } from "../../components/ui/widgets.js";
+import { Button, ConfirmDialog, Field, TextInput } from "../../components/ui/widgets.js";
 import { formatDate } from "../../lib/format.js";
 
 const MODES: PrivacyMode[] = ["metadata-only", "redacted-content", "full-local"];
+
+const MODE_META: Record<
+  PrivacyMode,
+  { label: string; icon: typeof Shield; tone: "info" | "low" | "high"; description: string }
+> = {
+  "metadata-only": {
+    label: "Metadata only",
+    icon: Lock,
+    tone: "info",
+    description:
+      "Only counts and metrics are stored. No prompt content, tool inputs, file paths, or commands.",
+  },
+  "redacted-content": {
+    label: "Redacted content",
+    icon: Shield,
+    tone: "low",
+    description:
+      "Redacted content is stored; secrets and raw paths are scrubbed before persistence. Recommended.",
+  },
+  "full-local": {
+    label: "Full local",
+    icon: Eye,
+    tone: "high",
+    description:
+      "Full local content retained, but secrets/auth headers/known API-key formats are still never persisted. Explicit opt-in.",
+  },
+};
 
 export function Privacy() {
   const q = usePrivacy();
@@ -35,10 +63,10 @@ export function Privacy() {
   const setSetting = (key: string, value: unknown) => update.mutate({ key, value });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-xl font-semibold">Privacy & settings</h2>
-        <p className="text-sm text-[var(--al-text-muted)]">
+        <h2 className="text-xl font-semibold tracking-tight">Privacy & settings</h2>
+        <p className="text-sm text-[var(--al-text-secondary)]">
           Your data stays local. Adjust what is stored and how long it is kept.
         </p>
       </div>
@@ -78,7 +106,7 @@ export function Privacy() {
 
           <Card className="lg:col-span-2">
             <CardTitle>Stored data categories</CardTitle>
-            <p className="mt-2 text-sm text-[var(--al-text-muted)]">
+            <p className="mt-3 text-sm text-[var(--al-text-secondary)]">
               {q.data.storedDataCategories.join(", ")}
             </p>
             <p className="mt-3 break-all font-mono text-xs text-[var(--al-text-muted)]">
@@ -90,7 +118,7 @@ export function Privacy() {
             <CardTitle>Data management</CardTitle>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
-                variant="ghost"
+                variant="secondary"
                 disabled={exportData.isPending}
                 onClick={() => {
                   exportData.mutate(undefined, {
@@ -116,7 +144,7 @@ export function Privacy() {
               </Button>
             </div>
             {exportData.isError ? <ErrorState error={exportData.error} /> : null}
-            {exported ? <p className="mt-2 text-xs text-green-500">{exported}</p> : null}
+            {exported ? <p className="mt-2 text-xs text-[var(--al-success)]">{exported}</p> : null}
           </Card>
         </div>
       ) : null}
@@ -168,32 +196,42 @@ function PrivacyModeCard({
   pending: boolean;
   onChange: (m: PrivacyMode) => void;
 }) {
+  const meta = MODE_META[mode];
   return (
-    <Card>
+    <Card className="lg:col-span-2">
       <CardTitle>Active privacy mode</CardTitle>
-      <div className="mt-3 flex items-center gap-2">
-        <Badge tone={mode === "metadata-only" ? "info" : mode === "full-local" ? "high" : "low"}>
-          {mode}
-        </Badge>
+      <div className="mt-4 flex items-center gap-2">
+        <Badge tone={meta.tone}>{mode}</Badge>
         {mode === "redacted-content" ? (
           <span className="text-xs text-[var(--al-text-muted)]">recommended</span>
         ) : null}
       </div>
-      <div className="mt-3">
-        <Field label="Mode" htmlFor="privacy-mode" hint={modeDescription(mode)}>
-          <Select
-            id="privacy-mode"
-            value={mode}
-            disabled={pending}
-            onChange={(e) => onChange(e.target.value as PrivacyMode)}
-          >
-            {MODES.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </Select>
-        </Field>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {MODES.map((m) => {
+          const item = MODE_META[m];
+          const ItemIcon = item.icon;
+          return (
+            <button
+              key={m}
+              aria-label={`Select ${item.label} mode`}
+              onClick={() => onChange(m)}
+              disabled={pending}
+              className={cn(
+                "flex flex-col items-start gap-2 rounded-[var(--al-radius-lg)] border p-4 text-left transition-all duration-150",
+                mode === m
+                  ? "border-[var(--al-accent)] bg-[var(--al-accent-ghost)]"
+                  : "border-[var(--al-border)] bg-[var(--al-bg-elevated)] hover:border-[var(--al-border-strong)] hover:bg-[var(--al-bg-hover)]",
+              )}
+            >
+              <ItemIcon
+                size={18}
+                className={mode === m ? "text-[var(--al-accent)]" : "text-[var(--al-text-muted)]"}
+              />
+              <span className="text-sm font-semibold text-[var(--al-text)]">{item.label}</span>
+              <span className="text-xs text-[var(--al-text-secondary)]">{item.description}</span>
+            </button>
+          );
+        })}
       </div>
     </Card>
   );
@@ -219,13 +257,13 @@ function RetentionCard({
   return (
     <Card>
       <CardTitle>Retention</CardTitle>
-      <p className="mt-3 text-sm">
+      <p className="mt-3 text-sm text-[var(--al-text)]">
         {days ? `Auto-delete data older than ${days} days.` : "No automatic retention limit set."}
       </p>
       <p className="mt-2 text-xs text-[var(--al-text-muted)]">
         Retention is enforced when you run a scan; pruned sessions and their events are removed.
       </p>
-      <div className="mt-3 flex items-end gap-2">
+      <div className="mt-4 flex items-end gap-2">
         <Field label="Retention window (days)" htmlFor="retention-days">
           <TextInput
             id="retention-days"
@@ -241,7 +279,7 @@ function RetentionCard({
           Save
         </Button>
       </div>
-      {saved ? <p className="mt-2 text-xs text-green-500">{saved}</p> : null}
+      {saved ? <p className="mt-3 text-xs text-[var(--al-success)]">{saved}</p> : null}
     </Card>
   );
 }
@@ -262,33 +300,35 @@ function RedactionCard({
   return (
     <Card>
       <CardTitle>Redaction</CardTitle>
-      <ul className="mt-3 space-y-2 text-sm">
-        <li>
-          <label className="flex items-center gap-2">
+      <ul className="mt-4 space-y-3 text-sm">
+        <li className="flex items-center gap-3">
+          <label className="inline-flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
               checked={redactEmails}
               disabled={pending}
               onChange={(e) => onToggle("privacy.redactEmails", e.target.checked)}
+              className="h-4 w-4 accent-[var(--al-accent)]"
             />
-            Email redaction
+            <span className="text-[var(--al-text)]">Email redaction</span>
           </label>
         </li>
-        <li>
-          <label className="flex items-center gap-2">
+        <li className="flex items-center gap-3">
+          <label className="inline-flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
               checked={redactHomePath}
               disabled={pending}
               onChange={(e) => onToggle("privacy.redactHomePath", e.target.checked)}
+              className="h-4 w-4 accent-[var(--al-accent)]"
             />
-            Home-path redaction
+            <span className="text-[var(--al-text)]">Home-path redaction</span>
           </label>
         </li>
       </ul>
-      <p className="mt-2 text-xs text-[var(--al-text-muted)]">
-        Custom patterns: {customPatterns}. Secrets, auth headers, and known API-key formats are
-        always scrubbed — even in full-local mode.
+      <p className="mt-4 text-xs text-[var(--al-text-muted)]">
+        <Database size={12} className="inline" /> Custom patterns: {customPatterns}. Secrets, auth
+        headers, and known API-key formats are always scrubbed — even in full-local mode.
       </p>
     </Card>
   );
@@ -318,9 +358,9 @@ function ExclusionsCard({
         Project paths here are skipped during scans.
       </p>
       {excluded.length === 0 ? (
-        <p className="mt-3 text-sm text-[var(--al-text-muted)]">No exclusions configured.</p>
+        <p className="mt-4 text-sm text-[var(--al-text-muted)]">No exclusions configured.</p>
       ) : (
-        <ul className="mt-3 space-y-1">
+        <ul className="mt-4 space-y-1">
           {excluded.map((e) => (
             <li key={e} className="flex items-center gap-2">
               <span className="min-w-0 flex-1 break-all font-mono text-xs text-[var(--al-text-muted)]">
@@ -339,7 +379,7 @@ function ExclusionsCard({
           ))}
         </ul>
       )}
-      <div className="mt-3 flex items-end gap-2">
+      <div className="mt-4 flex items-end gap-2">
         <Field label="Add an excluded project path" htmlFor="excluded-path">
           <TextInput
             id="excluded-path"
@@ -361,17 +401,4 @@ function ExclusionsCard({
       </div>
     </Card>
   );
-}
-
-function modeDescription(mode: string): string {
-  switch (mode) {
-    case "metadata-only":
-      return "Only counts and metrics are stored. No prompt content, tool inputs, file paths, or commands.";
-    case "redacted-content":
-      return "Redacted content is stored; secrets and raw paths are scrubbed before persistence. Recommended.";
-    case "full-local":
-      return "Full local content retained, but secrets/auth headers/known API-key formats are still never persisted. Explicit opt-in.";
-    default:
-      return "";
-  }
 }
