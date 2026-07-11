@@ -13,6 +13,7 @@ import { inspectConfig } from "./inspect.js";
 import { runChecks } from "./checks.js";
 import { buildPatches, validatePatch } from "./patches.js";
 import { applyPatch, rollbackPatch, reconstructAfter } from "./apply.js";
+import type { ApplySecurityCtx } from "./apply.js";
 import { buildSkillDraft, buildHookDraft, writeDrafts } from "./drafts.js";
 import { runDoctor } from "./doctor.js";
 import { unifiedDiff } from "./diff.js";
@@ -25,6 +26,11 @@ import type { DoctorFinding } from "@agentlens/domain";
 let claudeHome: string;
 let projectPath: string;
 let alHome: string;
+
+/** Security context for apply/rollback (§19.2): the approved-path roots. */
+function secCtx(): ApplySecurityCtx {
+  return { claudeHome, projectPath };
+}
 
 beforeEach(() => {
   claudeHome = mkdtempSync(join(tmpdir(), "al-doc-claude-"));
@@ -539,14 +545,14 @@ describe("applyPatch + rollbackPatch", () => {
     expect(md).toBeTruthy();
     const mdPatch = expectDefined(md, "claude-md patch");
     const before = readFileSync(join(projectPath, "CLAUDE.md"), "utf8");
-    const result = applyPatch(mdPatch, alHome, "2026-07-11T00:00:00Z");
+    const result = applyPatch(mdPatch, alHome, "2026-07-11T00:00:00Z", secCtx());
     expect(result.applied).toBe(true);
     expect(existsSync(result.backupPath ?? "")).toBe(true);
     const after = readFileSync(join(projectPath, "CLAUDE.md"), "utf8");
     expect(after.startsWith(before)).toBe(true); // append-only
     expect(after).toContain("Build, test, verify");
     // Rollback restores the original.
-    const rb = rollbackPatch(mdPatch, alHome);
+    const rb = rollbackPatch(mdPatch, alHome, secCtx());
     expect(rb.restored).toBe(true);
     expect(readFileSync(join(projectPath, "CLAUDE.md"), "utf8")).toBe(before);
   });
@@ -574,11 +580,11 @@ describe("applyPatch + rollbackPatch", () => {
     expect(hp).toBeTruthy();
     const hpPatch = expectDefined(hp, "json-settings timeout patch");
     const before = readFileSync(join(claudeHome, "settings.json"), "utf8");
-    const result = applyPatch(hpPatch, alHome, "2026-07-11T00:00:00Z");
+    const result = applyPatch(hpPatch, alHome, "2026-07-11T00:00:00Z", secCtx());
     expect(result.applied).toBe(true);
     const after = readFileSync(join(claudeHome, "settings.json"), "utf8");
     expect(after).toContain('"timeout": 2000');
-    const rb = rollbackPatch(hpPatch, alHome);
+    const rb = rollbackPatch(hpPatch, alHome, secCtx());
     expect(rb.restored).toBe(true);
     expect(readFileSync(join(claudeHome, "settings.json"), "utf8")).toBe(before);
   });
@@ -597,10 +603,10 @@ describe("applyPatch + rollbackPatch", () => {
     const mdPatch = expectDefined(md, "claude-md new-file patch");
     const target = expectDefined(mdPatch.targetFile, "patch target file");
     expect(existsSync(target)).toBe(false);
-    const result = applyPatch(mdPatch, alHome, "2026-07-11T00:00:00Z");
+    const result = applyPatch(mdPatch, alHome, "2026-07-11T00:00:00Z", secCtx());
     expect(result.applied).toBe(true);
     expect(existsSync(target)).toBe(true);
-    const rb = rollbackPatch(mdPatch, alHome);
+    const rb = rollbackPatch(mdPatch, alHome, secCtx());
     expect(rb.restored).toBe(true);
     expect(existsSync(target)).toBe(false); // sentinel backup → file removed
   });

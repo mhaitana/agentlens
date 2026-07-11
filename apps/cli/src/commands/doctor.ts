@@ -20,8 +20,9 @@ import readline from "node:readline";
 import type { DoctorReport, PatchApplicationResult, ProposedPatch } from "@agentlens/domain";
 import { resolveHome } from "../context.js";
 import { runDoctor } from "../doctor/doctor.js";
-import { applyPatch } from "../doctor/apply.js";
+import { applyPatch, type ApplySecurityCtx } from "../doctor/apply.js";
 import { writeDrafts } from "../doctor/drafts.js";
+import { resolveClaudeHome, resolveProjectPath } from "../doctor/inspect.js";
 
 export function makeDoctorCommand(): Command {
   const cmd = new Command("doctor")
@@ -40,6 +41,12 @@ export function makeDoctorCommand(): Command {
         projectPathOverride: opts.project,
         nowIso,
       });
+      // §19.2: approved-path allowlist roots for the apply step. Resolved from
+      // the same overrides the report used, so CLI and API enforce identically.
+      const projectPath = resolveProjectPath(opts.project);
+      const secCtx: ApplySecurityCtx = projectPath
+        ? { claudeHome: resolveClaudeHome(opts.claudeHome), projectPath }
+        : { claudeHome: resolveClaudeHome(opts.claudeHome) };
 
       const wantFix = Boolean(opts.fix);
       const dryRun = Boolean(opts.dryRun);
@@ -56,7 +63,7 @@ export function makeDoctorCommand(): Command {
           return;
         }
         if (wantFix && opts.yes) {
-          const { applied, draftsWritten } = applyApproved(report, home, nowIso);
+          const { applied, draftsWritten } = applyApproved(report, home, nowIso, secCtx);
           process.stdout.write(JSON.stringify({ report, applied, draftsWritten }, null, 2) + "\n");
           return;
         }
@@ -91,7 +98,7 @@ export function makeDoctorCommand(): Command {
         process.stdout.write(pc.yellow("  Not approved — no changes written.\n"));
         return;
       }
-      const { applied, draftsWritten } = applyApproved(report, home, nowIso);
+      const { applied, draftsWritten } = applyApproved(report, home, nowIso, secCtx);
       printApplyResults(applied, draftsWritten);
     });
 
@@ -115,11 +122,12 @@ function applyApproved(
   report: DoctorReport,
   home: string,
   nowIso: string,
+  ctx: ApplySecurityCtx,
 ): { applied: PatchApplicationResult[]; draftsWritten: { skills: string[]; hooks: string[] } } {
   const applied: PatchApplicationResult[] = [];
   for (const patch of report.patches) {
     if (patch.refused || !patch.diff) continue;
-    applied.push(applyPatch(patch, home, nowIso));
+    applied.push(applyPatch(patch, home, nowIso, ctx));
   }
   const draftsWritten = writeDrafts(home, report.skillDrafts, report.hookDrafts);
   return { applied, draftsWritten };

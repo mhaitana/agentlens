@@ -96,10 +96,14 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
 /** Read the built dashboard's index.html and inject the runtime bootstrap. */
 async function loadDashboardIndex(dashboardDir: string, runtimeToken: string): Promise<string> {
   const html = await readFile(join(dashboardDir, "index.html"), "utf-8");
-  const bootstrap = `<script>window.__AGENTLENS__ = ${JSON.stringify({
-    apiBase: "/api/v1",
-    token: runtimeToken,
-  })};</script>`;
+  // Embed JSON inside a <script> tag safely (defense-in-depth, §19.1/§19.4): the
+  // token is hex-only today, but escape `<`, `>`, and `&` so a future change to the
+  // token source can never break out of the script context.
+  const safeJson = JSON.stringify({ apiBase: "/api/v1", token: runtimeToken })
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
+  const bootstrap = `<script>window.__AGENTLENS__ = ${safeJson};</script>`;
   // Inject right before </head>; fall back to prepending if no head tag.
   if (html.includes("</head>")) return html.replace("</head>", `${bootstrap}</head>`);
   return `${bootstrap}${html}`;

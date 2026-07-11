@@ -177,4 +177,41 @@ describe("doctor API routes (§15.7–15.11, §3.5, §15.13)", () => {
     expect(res.statusCode).toBe(404);
     await server.close();
   });
+
+  it("rollback ignores a forged client targetFile and restores the sidecar target (§19.2)", async () => {
+    writeSettings(noTimeoutSettings());
+    const deps = await makeDeps();
+    const server = await buildServer(deps);
+    const before = readFileSync(join(claudeHome, "settings.json"), "utf8");
+
+    const applied = await server
+      .inject({
+        method: "POST",
+        url: "/api/v1/doctor/apply",
+        headers: { "x-agentlens-token": deps.runtimeToken },
+        payload: { approved: true, claudeHome },
+      })
+      .then((r) => r.json().applied.find((x: { applied: boolean }) => x.applied));
+    expect(applied).toBeTruthy();
+    await server.close();
+
+    // Forge a targetFile pointing at an unrelated, attacker-chosen path. The
+    // server MUST ignore it and restore to the authoritative sidecar target
+    // (the real settings.json), never to /tmp/agentlens-forged.
+    const forged = join(tmpdir(), "agentlens-forged-settings.json");
+    const server2 = await buildServer(deps);
+    const rb = await server2.inject({
+      method: "POST",
+      url: "/api/v1/doctor/rollback",
+      headers: { "x-agentlens-token": deps.runtimeToken },
+      payload: { patchId: applied.patchId, targetFile: forged },
+    });
+    expect(rb.statusCode).toBe(200);
+    expect(rb.json().result.restored).toBe(true);
+    // The forged file was NOT created.
+    expect(existsSync(forged)).toBe(false);
+    // The real settings.json was restored to its pre-patch content.
+    expect(readFileSync(join(claudeHome, "settings.json"), "utf8")).toBe(before);
+    await server2.close();
+  });
 });

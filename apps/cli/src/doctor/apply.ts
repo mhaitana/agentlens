@@ -30,6 +30,19 @@ import type {
   RollbackResult,
 } from "@agentlens/domain";
 import { validatePatch, addedLinesFromDiff } from "./patches.js";
+import { isApprovedConfigTarget, targetSidecarPath } from "./targets.js";
+
+/**
+ * Security context for a Doctor apply/rollback (spec §19.2). Carries the resolved
+ * Claude home and project root so every write target can be checked against the
+ * approved-path allowlist before any file is touched.
+ */
+export interface ApplySecurityCtx {
+  /** Resolved Claude home (`~/.claude` or an override). */
+  claudeHome: string;
+  /** Resolved project root, when the doctor is scoped to a project. */
+  projectPath?: string;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -124,6 +137,7 @@ export function applyPatch(
   patch: ProposedPatch,
   home: string,
   _nowIso: string,
+  ctx: ApplySecurityCtx,
 ): PatchApplicationResult {
   if (patch.refused) {
     return {
@@ -149,6 +163,26 @@ export function applyPatch(
       targetFile: patch.targetFile,
       validation: patch.validation,
       rollbackHint: "Patch has no diff (no-op).",
+    };
+  }
+  // §19.2: refuse to write outside approved Claude Code config paths. This is the
+  // hard boundary that prevents a request-supplied project path from redirecting
+  // a write to an arbitrary filesystem location.
+  if (!isApprovedConfigTarget(patch.targetFile, ctx.claudeHome, ctx.projectPath)) {
+    return {
+      patchId: patch.id,
+      applied: false,
+      targetFile: patch.targetFile,
+      validation: {
+        parses: true,
+        noBypassPermissions: true,
+        noExternalTransmission: true,
+        unrelatedPreserved: false,
+        notes: [
+          `Refused: target file "${patch.targetFile}" is outside approved Claude Code config paths.`,
+        ],
+      },
+      rollbackHint: "Patch was refused; nothing to roll back.",
     };
   }
 
@@ -178,6 +212,17 @@ export function applyPatch(
   } else {
     writeFileSync(bkPath, "", { mode: 0o600 }); // sentinel: file did not exist
   }
+  // Record the authoritative restore target alongside the backup (§19.2). Rollback
+  // reads this sidecar instead of trusting a client-supplied targetFile, so a
+  // forged rollback request cannot redirect a restore to an arbitrary path. The
+  // resolved approved-path roots are stored too, so rollback can re-run the
+  // allowlist check self-contained (without needing the request to repeat them).
+  const sidecar = JSON.stringify({
+    target: patch.targetFile,
+    claudeHome: ctx.claudeHome,
+    projectPath: ctx.projectPath ?? null,
+  });
+  writeFileSync(targetSidecarPath(bkPath), sidecar, { mode: 0o600 });
 
   // Step 6: write + validate after.
   writeAtomic(patch.targetFile, after);
@@ -212,7 +257,11 @@ export function applyPatch(
  * Roll back a previously applied patch by restoring its backup (§3.5 step 7).
  * If the backup is an empty sentinel, the file is removed (it didn't exist before).
  */
-export function rollbackPatch(patch: ProposedPatch, home: string): RollbackResult {
+export function rollbackPatch(
+  patch: ProposedPatch,
+  home: string,
+  ctx: ApplySecurityCtx,
+): RollbackResult {
   const bkPath = backupPath(home, patch.id);
   if (!existsSync(bkPath)) {
     return {
@@ -229,27 +278,70 @@ export function rollbackPatch(patch: ProposedPatch, home: string): RollbackResul
       },
     };
   }
+  // §19.2: the restore target is authoritative from the sidecar written at apply
+  // time — never from the request body. The sidecar also carries the approved-path
+  // roots used at apply, so the allowlist re-check is self-contained and does not
+  // depend on the rollback request repeating them. Fall back to patch.targetFile +
+  // the request ctx only for backups made before the sidecar existed.
+  const sidecar = targetSidecarPath(bkPath);
+  let authoritativeTarget: string | undefined = patch.targetFile;
+  let allowlistHome = ctx.claudeHome;
+  let allowlistProject = ctx.projectPath;
+  if (existsSync(sidecar)) {
+    try {
+      const parsed = JSON.parse(readFileText(sidecar)) as {
+        target?: string;
+        claudeHome?: string;
+        projectPath?: string | null;
+      };
+      if (parsed.target) authoritativeTarget = parsed.target;
+      if (parsed.claudeHome) allowlistHome = parsed.claudeHome;
+      allowlistProject = parsed.projectPath ?? undefined;
+    } catch {
+      // Malformed sidecar: fall back to patch.targetFile (still allowlist-checked).
+    }
+  }
+  if (
+    !authoritativeTarget ||
+    !isApprovedConfigTarget(authoritativeTarget, allowlistHome, allowlistProject)
+  ) {
+    return {
+      patchId: patch.id,
+      restored: false,
+      backupPath: bkPath,
+      targetFile: authoritativeTarget,
+      validation: {
+        parses: true,
+        noBypassPermissions: true,
+        noExternalTransmission: true,
+        unrelatedPreserved: false,
+        notes: [
+          `Refused: restore target "${
+            authoritativeTarget ?? "(none)"
+          }" is outside approved Claude Code config paths.`,
+        ],
+      },
+    };
+  }
   const backupContent = readFileText(bkPath);
-  if (patch.targetFile && existsSync(patch.targetFile)) {
+  if (existsSync(authoritativeTarget)) {
     if (backupContent === "") {
       // Sentinel: the file didn't exist before the patch. Remove it.
-      rmSync(patch.targetFile, { force: true });
+      rmSync(authoritativeTarget, { force: true });
     } else {
-      writeAtomic(patch.targetFile, backupContent);
+      writeAtomic(authoritativeTarget, backupContent);
     }
-  } else if (patch.targetFile && backupContent !== "") {
+  } else if (backupContent !== "") {
     // File was removed somehow; restore it from backup.
-    writeAtomic(patch.targetFile, backupContent);
+    writeAtomic(authoritativeTarget, backupContent);
   }
   const restored =
-    !patch.targetFile ||
-    !existsSync(patch.targetFile) ||
-    readFileText(patch.targetFile) === backupContent;
+    !existsSync(authoritativeTarget) || readFileText(authoritativeTarget) === backupContent;
   return {
     patchId: patch.id,
     restored,
     backupPath: bkPath,
-    targetFile: patch.targetFile,
+    targetFile: authoritativeTarget,
     validation: {
       parses: true,
       noBypassPermissions: true,
