@@ -15,11 +15,11 @@
       "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["build", "^build"],
       "outputs": ["coverage/**"]
     },
     "test:integration": {
-      "dependsOn": ["^build", "test"]
+      "dependsOn": ["build", "^build", "test"]
     },
     "test:e2e": {
       "dependsOn": ["^build"]

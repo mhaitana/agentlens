@@ -43,14 +43,14 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
+      - name: Build
+        run: pnpm build
+
       - name: Unit tests
         run: pnpm test
 
       - name: Integration tests
         run: pnpm test:integration
-
-      - name: Build
-        run: pnpm build
 
   # Browser E2E runs separately so a browser/environment flake never masks the
   # core gate signal.
