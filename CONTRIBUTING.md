@@ -62,7 +62,7 @@ plugins/agentlens-claude   distributable observation-only Claude Code plugin
 
 Requirements:
 
-- **Node.js ≥ 20.11**
+- **Node.js ≥ 24**
 - **pnpm 10.33.0** (the repo pins it via `packageManager`; `corepack enable`
   will pick it up automatically)
 

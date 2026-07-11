@@ -28,7 +28,13 @@ export default defineConfig({
     css: false,
     server: {
       deps: {
-        inline: ["@exodus/bytes"],
+        inline: [
+          "@exodus/bytes",
+          "html-encoding-sniffer",
+          "data-urls",
+          "whatwg-mimetype",
+          "whatwg-url",
+        ],
       },
     },
   },

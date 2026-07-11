@@ -61,7 +61,7 @@ You can purge everything with `agentlens privacy purge`, prune by retention with
 
 ## Installation
 
-Requirements: **Node.js ≥ 20.11** and **pnpm** (the repo pins `pnpm@10.33.0`).
+Requirements: **Node.js ≥ 24** and **pnpm** (the repo pins `pnpm@10.33.0`).
 
 ```bash
 pnpm install
@@ -206,7 +206,7 @@ paths**.
 
 ## Development setup
 
-Requirements: **Node.js ≥ 20.11** and **pnpm 10.33.0** (the repo pins it via
+Requirements: **Node.js ≥ 24** and **pnpm 10.33.0** (the repo pins it via
 `packageManager`; `corepack enable` will pick it up).
 
 ```bash

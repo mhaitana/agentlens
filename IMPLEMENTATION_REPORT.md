@@ -173,7 +173,7 @@ These are genuine and stated plainly (§24 scope + §12 compatibility):
 
 ## How to run
 
-Requirements: **Node.js ≥ 20.11** and **pnpm** (the repo pins `pnpm@10.33.0`).
+Requirements: **Node.js ≥ 24** and **pnpm** (the repo pins `pnpm@10.33.0`).
 
 ```bash
 pnpm install

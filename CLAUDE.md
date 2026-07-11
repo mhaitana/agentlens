@@ -12,7 +12,7 @@ Note: this project does **not** use the Next.js/Expo stack described in the pare
 
 ## Commands
 
-All commands run from the repo root. Package manager is **pnpm** (repo pins `pnpm@10.33.0`); Node ≥ 20.11. Tasks are orchestrated by Turborepo (`turbo run <task>` via the root scripts), which respects `^build` dependencies — building a package first builds its workspace deps.
+All commands run from the repo root. Package manager is **pnpm** (repo pins `pnpm@10.33.0`); Node ≥ 24. Tasks are orchestrated by Turborepo (`turbo run <task>` via the root scripts), which respects `^build` dependencies — building a package first builds its workspace deps.
 
 ```bash
 pnpm install                 # install workspace deps
